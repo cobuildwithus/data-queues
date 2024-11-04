@@ -1,27 +1,27 @@
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { FastifyAdapter } from '@bull-board/fastify';
-import fastify, { FastifyInstance, FastifyRequest } from 'fastify';
+import fastify, {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+} from 'fastify';
 import { Server, IncomingMessage, ServerResponse } from 'http';
 import { env } from './env';
-
+import { Queue } from 'bullmq';
 import { createQueue, setupQueueProcessor } from './queue';
+import { JobBody } from './types/job';
 
-interface AddJobQueryString {
-  id: string;
-  email: string;
-}
+const setupQueue = async () => {
+  const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
+  await setupQueueProcessor<JobBody>(embeddingsQueue.name);
+  return embeddingsQueue;
+};
 
-const run = async () => {
-  const welcomeEmailQueue = createQueue('WelcomeEmailQueue');
-  await setupQueueProcessor(welcomeEmailQueue.name);
-
-  const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
-    fastify();
-
+const setupBullBoard = (server: FastifyInstance, queue: Queue) => {
   const serverAdapter = new FastifyAdapter();
   createBullBoard({
-    queues: [new BullMQAdapter(welcomeEmailQueue)],
+    queues: [new BullMQAdapter(queue)],
     serverAdapter,
   });
   serverAdapter.setBasePath('/');
@@ -29,45 +29,86 @@ const run = async () => {
     prefix: '/',
     basePath: '/',
   });
+};
 
-  server.get(
+const handleAddJob = (queue: Queue) => {
+  return async (
+    req: FastifyRequest<{ Body: JobBody }>,
+    reply: FastifyReply
+  ) => {
+    const { type, content, group, user } = req.body;
+
+    if (!type || !content || !group.length || !user) {
+      reply.status(400).send({ error: 'Missing required fields' });
+      return;
+    }
+
+    if (!['grant', 'cast'].includes(type)) {
+      reply
+        .status(400)
+        .send({ error: 'Type must be either "grant" or "cast"' });
+      return;
+    }
+
+    if (!Array.isArray(group) || !Array.isArray(user)) {
+      reply.status(400).send({ error: 'Group and user must be arrays' });
+      return;
+    }
+
+    const jobId = `${type}-${Date.now()}`;
+    await queue.add(jobId, { type, content, group, user });
+
+    reply.send({
+      ok: true,
+      jobId,
+    });
+  };
+};
+
+const setupServer = (queue: Queue) => {
+  const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
+    fastify();
+
+  setupBullBoard(server, queue);
+
+  server.post(
     '/add-job',
     {
       schema: {
-        querystring: {
+        body: {
           type: 'object',
+          required: ['type', 'content', 'group', 'user'],
           properties: {
-            title: { type: 'string' },
-            id: { type: 'string' },
+            type: {
+              type: 'string',
+              enum: ['grant', 'cast'],
+            },
+            content: { type: 'string' },
+            group: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            user: {
+              type: 'array',
+              items: { type: 'string' },
+            },
           },
         },
       },
     },
-    (req: FastifyRequest<{ Querystring: AddJobQueryString }>, reply) => {
-      if (
-        req.query == null ||
-        req.query.email == null ||
-        req.query.id == null
-      ) {
-        reply
-          .status(400)
-          .send({ error: 'Requests must contain both an id and a email' });
-
-        return;
-      }
-
-      const { email, id } = req.query;
-      welcomeEmailQueue.add(`WelcomeEmail-${id}`, { email });
-
-      reply.send({
-        ok: true,
-      });
-    }
+    handleAddJob(queue)
   );
+
+  return server;
+};
+
+const run = async () => {
+  const embeddingsQueue = await setupQueue();
+  const server = setupServer(embeddingsQueue);
 
   await server.listen({ port: env.PORT, host: '0.0.0.0' });
   console.log(
-    `To populate the queue and demo the UI, run: curl https://${env.RAILWAY_STATIC_URL}/add-job?id=1&email=hello%40world.com`
+    `Server running on port ${env.PORT}. Send POST requests to ${env.RAILWAY_STATIC_URL}/add-job`
   );
 };
 

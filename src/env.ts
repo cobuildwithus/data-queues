@@ -1,14 +1,24 @@
 import { envsafe, port, str } from 'envsafe';
 
 export const env = envsafe({
-  REDISHOST: str(),
-  REDISPORT: port(),
-  REDISUSER: str(),
-  REDISPASSWORD: str(),
+  REDISHOST: str({
+    devDefault: 'localhost',
+  }),
+  REDISPORT: port({
+    devDefault: 6379,
+  }),
+  REDISUSER: str({
+    devDefault: 'default',
+    allowEmpty: true,
+  }),
+  REDISPASSWORD: str({
+    devDefault: '',
+    allowEmpty: true,
+  }),
   PORT: port({
-    devDefault: 3000,
+    devDefault: 4000,
   }),
   RAILWAY_STATIC_URL: str({
-    devDefault: 'http://localhost:3000',
+    devDefault: 'http://localhost:4000',
   }),
 });
