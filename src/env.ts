@@ -1,6 +1,7 @@
 import { envsafe, port, str } from 'envsafe';
 
 export const env = envsafe({
+  OPENAI_API_KEY: str(),
   REDISHOST: str({
     devDefault: 'localhost',
   }),
