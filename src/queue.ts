@@ -1,4 +1,4 @@
-import { ConnectionOptions, Queue, QueueScheduler, Worker } from 'bullmq';
+import { ConnectionOptions, Queue, Worker } from 'bullmq';
 
 import { env } from './env';
 
@@ -12,11 +12,6 @@ const connection: ConnectionOptions = {
 export const createQueue = (name: string) => new Queue(name, { connection });
 
 export const setupQueueProcessor = async (queueName: string) => {
-  const queueScheduler = new QueueScheduler(queueName, {
-    connection,
-  });
-  await queueScheduler.waitUntilReady();
-
   /**
    * This is a dummy worker set up to demonstrate job progress and to
    * randomly fail jobs to demonstrate the UI.
