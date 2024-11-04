@@ -7,10 +7,10 @@ import fastify, {
   FastifyRequest,
 } from 'fastify';
 import { Server, IncomingMessage, ServerResponse } from 'http';
-import { env } from './env';
 import { Queue } from 'bullmq';
 import { createQueue, setupQueueProcessor } from './queue';
 import { JobBody } from './types/job';
+import 'dotenv/config';
 
 const setupQueue = async () => {
   const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
@@ -36,9 +36,9 @@ const handleAddJob = (queue: Queue) => {
     req: FastifyRequest<{ Body: JobBody }>,
     reply: FastifyReply
   ) => {
-    const { type, content, group, user } = req.body;
+    const { type, content, groups, users } = req.body;
 
-    if (!type || !content || !group.length || !user) {
+    if (!type || !content || !groups.length || !users.length) {
       reply.status(400).send({ error: 'Missing required fields' });
       return;
     }
@@ -50,13 +50,13 @@ const handleAddJob = (queue: Queue) => {
       return;
     }
 
-    if (!Array.isArray(group) || !Array.isArray(user)) {
-      reply.status(400).send({ error: 'Group and user must be arrays' });
+    if (!Array.isArray(groups) || !Array.isArray(users)) {
+      reply.status(400).send({ error: 'Groups and users must be arrays' });
       return;
     }
 
     const jobId = `${type}-${Date.now()}`;
-    await queue.add(jobId, { type, content, group, user });
+    await queue.add(jobId, { type, content, groups, users });
 
     reply.send({
       ok: true,
@@ -77,18 +77,18 @@ const setupServer = (queue: Queue) => {
       schema: {
         body: {
           type: 'object',
-          required: ['type', 'content', 'group', 'user'],
+          required: ['type', 'content', 'groups', 'users'],
           properties: {
             type: {
               type: 'string',
               enum: ['grant', 'cast'],
             },
             content: { type: 'string' },
-            group: {
+            groups: {
               type: 'array',
               items: { type: 'string' },
             },
-            user: {
+            users: {
               type: 'array',
               items: { type: 'string' },
             },
@@ -106,9 +106,9 @@ const run = async () => {
   const embeddingsQueue = await setupQueue();
   const server = setupServer(embeddingsQueue);
 
-  await server.listen({ port: env.PORT, host: '0.0.0.0' });
+  await server.listen({ port: Number(process.env.PORT), host: '0.0.0.0' });
   console.log(
-    `Server running on port ${env.PORT}. Send POST requests to ${env.RAILWAY_STATIC_URL}/add-job`
+    `Server running on port ${process.env.PORT}. Send POST requests to ${process.env.RAILWAY_STATIC_URL}/add-job`
   );
 };
 

@@ -1,25 +1,35 @@
 import { ConnectionOptions, Queue, Worker, Job } from 'bullmq';
 import { createHash } from 'crypto';
-import { env } from './env';
 import { JobBody } from './types/job';
 import { createClient } from 'redis';
 import OpenAI from 'openai';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { embeddings } from './database/schema';
+
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL as string,
+});
+
+const version = 1;
+
+const db = drizzle(pool);
 
 const openai = new OpenAI({
-  apiKey: env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY as string,
 });
 
 const connection: ConnectionOptions = {
-  host: env.REDISHOST,
-  port: env.REDISPORT,
-  username: env.REDISUSER,
-  password: env.REDISPASSWORD,
+  host: process.env.REDISHOST as string,
+  port: Number(process.env.REDISPORT),
+  username: process.env.REDISUSER as string,
+  password: process.env.REDISPASSWORD as string,
 };
 
 const redisClient = createClient({
-  url: `redis://${env.REDISHOST}:${env.REDISPORT}`,
-  username: env.REDISUSER,
-  password: env.REDISPASSWORD,
+  url: `redis://${process.env.REDISHOST}:${process.env.REDISPORT}`,
+  username: process.env.REDISUSER as string,
+  password: process.env.REDISPASSWORD as string,
 });
 
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
@@ -38,22 +48,32 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
         throw new Error('Job ID is required');
       }
 
+      await updateJobProgress(job, 'hash', 0);
+
       const data = job.data as JobBody;
-      const { exists, hash } = await handleContentHash(data.content, jobId);
+      const { exists, hash } = await handleContentHash(data);
 
       if (exists) {
         log('Content already processed, skipping...', job);
         return { jobId: hash };
       }
 
+      await updateJobProgress(job, 'hash', 100);
+
       await updateJobProgress(job, 'embeddings', 0);
 
       // Get embeddings for the content
       const embedding = await getEmbedding(data.content);
       log(`Generated embedding with ${embedding.length} dimensions`, job);
+      await storeEmbedding(embedding, data);
 
       await updateJobProgress(job, 'embeddings', 100);
-      await updateJobProgress(job, 'processing', 0);
+
+      await updateJobProgress(job, 'redis', 0);
+
+      await redisClient.set(`content:${hash}`, jobId);
+
+      await updateJobProgress(job, 'redis', 100);
 
       return { jobId: `This is the return value of job (${jobId})` };
     },
@@ -65,8 +85,10 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 // if it exists, return the existing hash
 // if it doesn't exist, create a new hash and store it in redis
 // return the new hash
-export const getContentHash = async (content: string) => {
-  const contentHash = createHash('sha256').update(content).digest('hex');
+export const getContentHash = async (content: string, type: string) => {
+  const contentHash = createHash('sha256')
+    .update(`${type}-${content}`)
+    .digest('hex');
   return contentHash;
 };
 
@@ -97,14 +119,31 @@ const updateJobProgress = async (job: Job, phase: string, progress: number) => {
 };
 
 // Helper to check and store content hash
-const handleContentHash = async (content: string, jobId: string) => {
-  const contentHash = await getContentHash(content);
+const handleContentHash = async (job: JobBody) => {
+  const contentHash = await getContentHash(job.content, job.type);
   const existingHash = await redisClient.get(`content:${contentHash}`);
 
   if (existingHash) {
     return { exists: true, hash: existingHash };
   }
 
-  await redisClient.set(`content:${contentHash}`, jobId);
   return { exists: false, hash: contentHash };
+};
+
+const storeEmbedding = async (embedding: number[], job: JobBody) => {
+  const contentHash = await getContentHash(job.content, job.type);
+
+  const result = await db
+    .insert(embeddings)
+    .values({
+      id: crypto.randomUUID(),
+      type: job.type,
+      content: job.content,
+      contentHash: contentHash,
+      embedding: embedding,
+      version: version,
+      groups: job.groups,
+      users: job.users,
+    })
+    .onConflictDoNothing();
 };
