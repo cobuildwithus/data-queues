@@ -61,12 +61,19 @@ const handleAddJob = (queue: Queue) => {
       return;
     }
 
-    const jobId = `${type}-${Date.now()}`;
-    await queue.add(jobId, { type, content, groups, users });
+    const jobName = `${type}-${Date.now()}`;
+    const job = await queue.add(jobName, {
+      type,
+      content,
+      groups,
+      users,
+      tags,
+    });
 
     reply.send({
       ok: true,
-      jobId,
+      jobName,
+      jobId: job.id,
     });
   };
 };

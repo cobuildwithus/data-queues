@@ -71,7 +71,7 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 
       await updateJobProgress(job, 'redis', 0);
 
-      await redisClient.set(`content:${hash}`, jobId);
+      await storeJobId(jobId, hash);
 
       await updateJobProgress(job, 'redis', 100);
 
@@ -79,6 +79,10 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
     },
     { connection }
   );
+};
+
+const storeJobId = async (jobId: string, contentHash: string) => {
+  await redisClient.set(`content:${contentHash}`, jobId);
 };
 
 // check redis for the content hash
@@ -121,13 +125,13 @@ const updateJobProgress = async (job: Job, phase: string, progress: number) => {
 // Helper to check and store content hash
 const handleContentHash = async (job: JobBody) => {
   const contentHash = await getContentHash(job.content, job.type);
-  const existingHash = await redisClient.get(`content:${contentHash}`);
+  const existingJobId = await redisClient.get(`content:${contentHash}`);
 
-  if (existingHash) {
-    return { exists: true, hash: existingHash };
+  if (existingJobId) {
+    return { exists: true, jobId: existingJobId };
   }
 
-  return { exists: false, hash: contentHash };
+  return { exists: false, jobId: null, contentHash };
 };
 
 const storeEmbedding = async (embedding: number[], job: JobBody) => {
