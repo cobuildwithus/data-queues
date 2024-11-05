@@ -51,11 +51,15 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
       await updateJobProgress(job, 'hash', 0);
 
       const data = job.data as JobBody;
-      const { exists, hash } = await handleContentHash(data);
+      const { exists, contentHash } = await handleContentHash(data);
 
       if (exists) {
         log('Content already processed, skipping...', job);
-        return { jobId, hash, message: 'Content already processed' };
+        return {
+          jobId,
+          hash: contentHash,
+          message: 'Content already processed',
+        };
       }
 
       await updateJobProgress(job, 'hash', 100);
