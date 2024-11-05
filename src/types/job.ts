@@ -12,5 +12,5 @@ export const validTypes = [
   'grant-application',
   'flow',
   'dispute',
-  'draft',
+  'draft-application',
 ];

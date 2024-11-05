@@ -11,6 +11,9 @@ import { Queue } from 'bullmq';
 import { createQueue, setupQueueProcessor } from './queue';
 import { JobBody, validTypes } from './types/job';
 import 'dotenv/config';
+import { db } from './database/db';
+import { embeddings } from './database/schema';
+import { and, eq } from 'drizzle-orm';
 
 const setupQueue = async () => {
   const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
@@ -79,6 +82,38 @@ const handleAddJob = (queue: Queue) => {
   };
 };
 
+const handleDeleteEmbedding = async (
+  req: FastifyRequest<{
+    Body: { contentHash: string; type: string };
+  }>,
+  reply: FastifyReply
+) => {
+  const { contentHash, type } = req.body;
+
+  if (!contentHash || !type) {
+    reply.status(400).send({ error: 'Content hash and type are required' });
+    return;
+  }
+
+  if (!validTypes.includes(type)) {
+    reply.status(400).send({
+      error: `Type must be one of: ${validTypes.join(', ')}`,
+    });
+    return;
+  }
+
+  await db
+    .delete(embeddings)
+    .where(
+      and(eq(embeddings.contentHash, contentHash), eq(embeddings.type, type))
+    );
+
+  reply.send({
+    ok: true,
+    message: `Deleted embedding with hash ${contentHash} and type ${type}`,
+  });
+};
+
 const setupServer = (queue: Queue) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();
@@ -122,6 +157,26 @@ const setupServer = (queue: Queue) => {
       },
     },
     handleAddJob(queue)
+  );
+
+  server.post(
+    '/delete-embedding',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['contentHash', 'type'],
+          properties: {
+            contentHash: { type: 'string' },
+            type: {
+              type: 'string',
+              enum: validTypes,
+            },
+          },
+        },
+      },
+    },
+    handleDeleteEmbedding
   );
 
   return server;

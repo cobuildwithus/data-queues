@@ -3,17 +3,10 @@ import { createHash } from 'crypto';
 import { JobBody } from './types/job';
 import { createClient } from 'redis';
 import OpenAI from 'openai';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { embeddings } from './database/schema';
+import { db } from './database/db';
 
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL as string,
-});
-
-const version = 7;
-
-const db = drizzle(pool);
+const version = 8;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY as string,
