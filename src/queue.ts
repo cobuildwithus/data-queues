@@ -11,7 +11,7 @@ const pool = new Pool({
   connectionString: process.env.POSTGRES_URL as string,
 });
 
-const version = 0.1;
+const version = 2;
 
 const db = drizzle(pool);
 
@@ -69,7 +69,7 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
       // Get embeddings for the content
       const embedding = await getEmbedding(data.content);
       log(`Generated embedding with ${embedding.length} dimensions`, job);
-      await storeEmbedding(embedding, data);
+      await storeEmbedding(embedding, data, contentHash);
 
       await updateJobProgress(job, 'embeddings', 100);
 
@@ -142,10 +142,12 @@ const handleContentHash = async (job: JobBody) => {
   return { exists: false, jobId: null, contentHash };
 };
 
-const storeEmbedding = async (embedding: number[], job: JobBody) => {
-  const contentHash = await getContentHash(job.content, job.type);
-
-  const result = await db
+const storeEmbedding = async (
+  embedding: number[],
+  job: JobBody,
+  contentHash: string
+) => {
+  await db
     .insert(embeddings)
     .values({
       id: crypto.randomUUID(),
