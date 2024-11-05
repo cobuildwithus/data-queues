@@ -11,7 +11,7 @@ const pool = new Pool({
   connectionString: process.env.POSTGRES_URL as string,
 });
 
-const version = 2;
+const version = 3;
 
 const db = drizzle(pool);
 
@@ -158,6 +158,7 @@ const storeEmbedding = async (
       version: version,
       groups: job.groups,
       users: job.users,
+      tags: job.tags,
     })
     .onConflictDoNothing();
 };
