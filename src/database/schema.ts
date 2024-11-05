@@ -6,12 +6,13 @@ import {
   vector,
   integer,
 } from 'drizzle-orm/pg-core';
+import { validTypes } from '../types/job';
 
 export const embeddings = pgTable('embeddings', {
   id: varchar('id', { length: 36 }).primaryKey(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-  type: varchar('type', { length: 12 }), // 'grant' or 'cast'
+  type: varchar('type', { length: 50 }).$type<(typeof validTypes)[number]>(), // Typed to match JobBody type
   version: integer('version').default(1),
   content: text('content'),
   contentHash: varchar('content_hash', { length: 64 }).unique(),
