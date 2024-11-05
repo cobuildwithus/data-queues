@@ -7,7 +7,7 @@ import { embeddings } from './database/schema';
 import { db } from './database/db';
 import { and, eq } from 'drizzle-orm';
 
-const version = 13;
+const version = 14;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY as string,
