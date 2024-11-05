@@ -75,7 +75,7 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 
       await updateJobProgress(job, 'redis', 100);
 
-      return { jobId: `This is the return value of job (${jobId})` };
+      return { jobId, hash };
     },
     { connection }
   );
