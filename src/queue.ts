@@ -7,7 +7,7 @@ import { embeddings } from './database/schema';
 import { db } from './database/db';
 import { and, eq } from 'drizzle-orm';
 
-const version = 11;
+const version = 12;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY as string,
@@ -204,6 +204,7 @@ const storeEmbedding = async (
       groups: job.groups.map((group) => group.toLowerCase()),
       users: job.users.map((user) => user.toLowerCase()),
       tags: job.tags.map((tag) => tag.toLowerCase()),
+      externalId: job.externalId,
     })
     .onConflictDoNothing();
 };

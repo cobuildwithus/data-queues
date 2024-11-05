@@ -52,7 +52,14 @@ const setupServer = (queues: {
       schema: {
         body: {
           type: 'object',
-          required: ['type', 'content', 'groups', 'users', 'tags'],
+          required: [
+            'type',
+            'content',
+            'groups',
+            'users',
+            'tags',
+            'externalId',
+          ],
           properties: {
             type: {
               type: 'string',
@@ -78,6 +85,7 @@ const setupServer = (queues: {
               type: 'array',
               items: { type: 'string' },
             },
+            externalId: { type: 'string' },
           },
         },
       },
