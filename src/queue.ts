@@ -95,7 +95,7 @@ const storeJobId = async (jobId: string, contentHash: string) => {
 // return the new hash
 export const getContentHash = async (content: string, type: string) => {
   const contentHash = createHash('sha256')
-    .update(`${type}-${content}`)
+    .update(`v${version}-${type}-${content}`)
     .digest('hex');
   return contentHash;
 };
