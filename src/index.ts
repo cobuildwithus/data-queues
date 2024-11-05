@@ -74,6 +74,7 @@ const handleAddJob = (queue: Queue) => {
       ok: true,
       jobName,
       jobId: job.id,
+      contentHash: job.data.contentHash,
     });
   };
 };
