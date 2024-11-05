@@ -75,11 +75,11 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 
       await updateJobProgress(job, 'redis', 0);
 
-      await storeJobId(jobId, hash);
+      await storeJobId(jobId, contentHash);
 
       await updateJobProgress(job, 'redis', 100);
 
-      return { jobId, hash, message: 'Successfully added embedding' };
+      return { jobId, contentHash, message: 'Successfully added embedding' };
     },
     { connection }
   );
@@ -132,7 +132,7 @@ const handleContentHash = async (job: JobBody) => {
   const existingJobId = await redisClient.get(`content:${contentHash}`);
 
   if (existingJobId) {
-    return { exists: true, jobId: existingJobId };
+    return { exists: true, jobId: existingJobId, contentHash };
   }
 
   return { exists: false, jobId: null, contentHash };
