@@ -55,7 +55,7 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 
       if (exists) {
         log('Content already processed, skipping...', job);
-        return { jobId: hash };
+        return { jobId, hash, message: 'Content already processed' };
       }
 
       await updateJobProgress(job, 'hash', 100);
@@ -75,7 +75,7 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 
       await updateJobProgress(job, 'redis', 100);
 
-      return { jobId, hash };
+      return { jobId, hash, message: 'Successfully added embedding' };
     },
     { connection }
   );
