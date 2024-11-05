@@ -1,12 +1,13 @@
 import { ConnectionOptions, Queue, Worker, Job } from 'bullmq';
 import { createHash } from 'crypto';
-import { JobBody } from './types/job';
+import { DeletionJobBody, JobBody } from './types/job';
 import { createClient } from 'redis';
 import OpenAI from 'openai';
 import { embeddings } from './database/schema';
 import { db } from './database/db';
+import { and, eq } from 'drizzle-orm';
 
-const version = 8;
+const version = 9;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY as string,
@@ -27,11 +28,19 @@ const redisClient = createClient({
 
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
+let redisConnected = false;
+const ensureRedisConnected = async () => {
+  if (!redisConnected) {
+    await redisClient.connect();
+    redisConnected = true;
+  }
+};
+
 export const createQueue = <T = JobBody>(name: string) =>
   new Queue<T>(name, { connection });
 
 export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
-  await redisClient.connect();
+  await ensureRedisConnected();
 
   new Worker<T>(
     queueName,
@@ -73,6 +82,49 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
       await updateJobProgress(job, 'redis', 100);
 
       return { jobId, contentHash, message: 'Successfully added embedding' };
+    },
+    { connection }
+  );
+};
+
+export const setupDeletionQueueProcessor = async (queueName: string) => {
+  await ensureRedisConnected();
+
+  new Worker(
+    queueName,
+    async (job: Job<DeletionJobBody>) => {
+      const jobId = job.id;
+      if (!jobId) {
+        throw new Error('Job ID is required');
+      }
+
+      const { contentHash, type } = job.data;
+
+      await updateJobProgress(job, 'deletion', 0);
+
+      // Delete from database
+      await db
+        .delete(embeddings)
+        .where(
+          and(
+            eq(embeddings.contentHash, contentHash),
+            eq(embeddings.type, type)
+          )
+        );
+
+      // Delete from Redis
+      await redisClient.del(`${contentHashPrefix}${contentHash}`);
+
+      await updateJobProgress(job, 'deletion', 100);
+
+      log(`Deleted embedding with hash ${contentHash} and type ${type}`, job);
+
+      return {
+        jobId,
+        contentHash,
+        type,
+        message: 'Successfully deleted embedding',
+      };
     },
     { connection }
   );

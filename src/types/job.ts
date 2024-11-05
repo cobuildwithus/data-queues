@@ -6,6 +6,11 @@ export interface JobBody {
   tags: string[];
 }
 
+export interface DeletionJobBody {
+  contentHash: string;
+  type: (typeof validTypes)[number];
+}
+
 export const validTypes = [
   'grant',
   'cast',

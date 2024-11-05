@@ -1,30 +1,33 @@
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { FastifyAdapter } from '@bull-board/fastify';
-import fastify, {
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-} from 'fastify';
+import fastify, { FastifyInstance } from 'fastify';
 import { Server, IncomingMessage, ServerResponse } from 'http';
 import { Queue } from 'bullmq';
-import { createQueue, setupQueueProcessor } from './queue';
-import { JobBody, validTypes } from './types/job';
+import {
+  createQueue,
+  setupQueueProcessor,
+  setupDeletionQueueProcessor,
+} from './queue';
+import { DeletionJobBody, JobBody, validTypes } from './types/job';
 import 'dotenv/config';
-import { db } from './database/db';
-import { embeddings } from './database/schema';
-import { and, eq } from 'drizzle-orm';
+import { handleAddEmbeddingJob } from './jobs/addEmbeddingJob';
+import { handleDeleteEmbedding } from './jobs/deleteEmbedding';
 
 const setupQueue = async () => {
   const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
+  const deletionQueue = createQueue<DeletionJobBody>('DeletionQueue');
+
   await setupQueueProcessor<JobBody>(embeddingsQueue.name);
-  return embeddingsQueue;
+  await setupDeletionQueueProcessor(deletionQueue.name);
+
+  return { embeddingsQueue, deletionQueue };
 };
 
-const setupBullBoard = (server: FastifyInstance, queue: Queue) => {
+const setupBullBoard = (server: FastifyInstance, queues: Queue[]) => {
   const serverAdapter = new FastifyAdapter();
   createBullBoard({
-    queues: [new BullMQAdapter(queue)],
+    queues: queues.map((queue) => new BullMQAdapter(queue)),
     serverAdapter,
   });
   serverAdapter.setBasePath('/');
@@ -34,91 +37,14 @@ const setupBullBoard = (server: FastifyInstance, queue: Queue) => {
   });
 };
 
-const handleAddJob = (queue: Queue) => {
-  return async (
-    req: FastifyRequest<{ Body: JobBody }>,
-    reply: FastifyReply
-  ) => {
-    const { type, content, groups, users, tags } = req.body;
-
-    if (!type || !content || !groups.length || !users.length || !tags) {
-      reply.status(400).send({ error: 'Missing required fields' });
-      return;
-    }
-
-    if (!validTypes.includes(type)) {
-      reply.status(400).send({
-        error: `Type must be one of: ${validTypes.join(', ')}`,
-      });
-      return;
-    }
-
-    if (
-      !Array.isArray(groups) ||
-      !Array.isArray(users) ||
-      !Array.isArray(tags)
-    ) {
-      reply
-        .status(400)
-        .send({ error: 'Groups, users, and tags must be arrays' });
-      return;
-    }
-
-    const jobName = `${type}-${Date.now()}`;
-    const job = await queue.add(jobName, {
-      type,
-      content,
-      groups,
-      users,
-      tags,
-    });
-
-    reply.send({
-      ok: true,
-      jobName,
-      jobId: job.id,
-      contentHash: job.data.contentHash,
-    });
-  };
-};
-
-const handleDeleteEmbedding = async (
-  req: FastifyRequest<{
-    Body: { contentHash: string; type: string };
-  }>,
-  reply: FastifyReply
-) => {
-  const { contentHash, type } = req.body;
-
-  if (!contentHash || !type) {
-    reply.status(400).send({ error: 'Content hash and type are required' });
-    return;
-  }
-
-  if (!validTypes.includes(type)) {
-    reply.status(400).send({
-      error: `Type must be one of: ${validTypes.join(', ')}`,
-    });
-    return;
-  }
-
-  await db
-    .delete(embeddings)
-    .where(
-      and(eq(embeddings.contentHash, contentHash), eq(embeddings.type, type))
-    );
-
-  reply.send({
-    ok: true,
-    message: `Deleted embedding with hash ${contentHash} and type ${type}`,
-  });
-};
-
-const setupServer = (queue: Queue) => {
+const setupServer = (queues: {
+  embeddingsQueue: Queue;
+  deletionQueue: Queue;
+}) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();
 
-  setupBullBoard(server, queue);
+  setupBullBoard(server, [queues.embeddingsQueue, queues.deletionQueue]);
 
   server.post(
     '/add-job',
@@ -156,7 +82,7 @@ const setupServer = (queue: Queue) => {
         },
       },
     },
-    handleAddJob(queue)
+    handleAddEmbeddingJob(queues.embeddingsQueue)
   );
 
   server.post(
@@ -176,15 +102,15 @@ const setupServer = (queue: Queue) => {
         },
       },
     },
-    handleDeleteEmbedding
+    handleDeleteEmbedding(queues.deletionQueue)
   );
 
   return server;
 };
 
 const run = async () => {
-  const embeddingsQueue = await setupQueue();
-  const server = setupServer(embeddingsQueue);
+  const queues = await setupQueue();
+  const server = setupServer(queues);
 
   await server.listen({ port: Number(process.env.PORT), host: '0.0.0.0' });
   console.log(

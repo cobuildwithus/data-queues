@@ -1,0 +1,51 @@
+import { Queue } from 'bullmq';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { JobBody, validTypes } from '../types/job';
+
+export const handleAddEmbeddingJob = (queue: Queue) => {
+  return async (
+    req: FastifyRequest<{ Body: JobBody }>,
+    reply: FastifyReply
+  ) => {
+    const { type, content, groups, users, tags } = req.body;
+
+    if (!type || !content || !groups.length || !users.length || !tags) {
+      reply.status(400).send({ error: 'Missing required fields' });
+      return;
+    }
+
+    if (!validTypes.includes(type)) {
+      reply.status(400).send({
+        error: `Type must be one of: ${validTypes.join(', ')}`,
+      });
+      return;
+    }
+
+    if (
+      !Array.isArray(groups) ||
+      !Array.isArray(users) ||
+      !Array.isArray(tags)
+    ) {
+      reply
+        .status(400)
+        .send({ error: 'Groups, users, and tags must be arrays' });
+      return;
+    }
+
+    const jobName = `${type}-${Date.now()}`;
+    const job = await queue.add(jobName, {
+      type,
+      content,
+      groups,
+      users,
+      tags,
+    });
+
+    reply.send({
+      ok: true,
+      jobName,
+      jobId: job.id,
+      contentHash: job.data.contentHash,
+    });
+  };
+};
