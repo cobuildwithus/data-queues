@@ -11,7 +11,7 @@ const pool = new Pool({
   connectionString: process.env.POSTGRES_URL as string,
 });
 
-const version = 4;
+const version = 5;
 
 const db = drizzle(pool);
 
