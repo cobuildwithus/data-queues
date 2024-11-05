@@ -9,7 +9,7 @@ import fastify, {
 import { Server, IncomingMessage, ServerResponse } from 'http';
 import { Queue } from 'bullmq';
 import { createQueue, setupQueueProcessor } from './queue';
-import { JobBody } from './types/job';
+import { JobBody, validTypes } from './types/job';
 import 'dotenv/config';
 
 const setupQueue = async () => {
@@ -36,22 +36,28 @@ const handleAddJob = (queue: Queue) => {
     req: FastifyRequest<{ Body: JobBody }>,
     reply: FastifyReply
   ) => {
-    const { type, content, groups, users } = req.body;
+    const { type, content, groups, users, tags } = req.body;
 
-    if (!type || !content || !groups.length || !users.length) {
+    if (!type || !content || !groups.length || !users.length || !tags) {
       reply.status(400).send({ error: 'Missing required fields' });
       return;
     }
 
-    if (!['grant', 'cast'].includes(type)) {
-      reply
-        .status(400)
-        .send({ error: 'Type must be either "grant" or "cast"' });
+    if (!validTypes.includes(type)) {
+      reply.status(400).send({
+        error: `Type must be one of: ${validTypes.join(', ')}`,
+      });
       return;
     }
 
-    if (!Array.isArray(groups) || !Array.isArray(users)) {
-      reply.status(400).send({ error: 'Groups and users must be arrays' });
+    if (
+      !Array.isArray(groups) ||
+      !Array.isArray(users) ||
+      !Array.isArray(tags)
+    ) {
+      reply
+        .status(400)
+        .send({ error: 'Groups, users, and tags must be arrays' });
       return;
     }
 
@@ -77,11 +83,22 @@ const setupServer = (queue: Queue) => {
       schema: {
         body: {
           type: 'object',
-          required: ['type', 'content', 'groups', 'users'],
+          required: ['type', 'content', 'groups', 'users', 'tags'],
           properties: {
             type: {
               type: 'string',
-              enum: ['grant', 'cast'],
+              enum: [
+                'grant',
+                'cast',
+                'grant-application',
+                'flow',
+                'dispute',
+                'draft',
+              ],
+            },
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
             },
             content: { type: 'string' },
             groups: {

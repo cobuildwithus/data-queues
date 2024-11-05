@@ -16,6 +16,7 @@ export const embeddings = pgTable('embeddings', {
   content: text('content'),
   contentHash: varchar('content_hash', { length: 64 }).unique(),
   embedding: vector('embedding', { dimensions: 1536 }), // Store as vector
-  groups: text('groups').array(), // Array of group IDs eg: nouns
+  groups: text('groups').array(), // Array of groups/communities eg: nouns
   users: text('users').array(), // Array of user addresses
+  tags: text('tags').array(), // Array of tags for future use maybe
 });
