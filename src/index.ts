@@ -37,6 +37,18 @@ const setupBullBoard = (server: FastifyInstance, queues: Queue[]) => {
   });
 };
 
+const validateApiKey = (request: any, reply: any, done: any) => {
+  console.log('Validating API key');
+  const apiKey = request.headers['x-api-key'];
+  if (!apiKey || apiKey !== process.env.API_KEY) {
+    console.log('Invalid API key');
+    reply.code(401).send({ error: 'Invalid or missing API key' });
+    return;
+  }
+  console.log('Valid API key');
+  done();
+};
+
 const setupServer = (queues: {
   embeddingsQueue: Queue;
   deletionQueue: Queue;
@@ -49,6 +61,7 @@ const setupServer = (queues: {
   server.post(
     '/add-job',
     {
+      preHandler: validateApiKey,
       schema: {
         body: {
           type: 'object',
@@ -65,16 +78,16 @@ const setupServer = (queues: {
               type: 'string',
               enum: validTypes,
             },
-            tags: {
-              type: 'array',
-              items: { type: 'string' },
-            },
             content: { type: 'string' },
             groups: {
               type: 'array',
               items: { type: 'string' },
             },
             users: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            tags: {
               type: 'array',
               items: { type: 'string' },
             },
@@ -89,6 +102,7 @@ const setupServer = (queues: {
   server.post(
     '/delete-embedding',
     {
+      preHandler: validateApiKey,
       schema: {
         body: {
           type: 'object',
@@ -107,16 +121,36 @@ const setupServer = (queues: {
   );
 
   server.setErrorHandler((error, request, reply) => {
+    console.error('Error occurred while processing request:');
     console.error('Request body:', JSON.stringify(request.body, null, 2));
     console.error('Validation error details:', error);
+    if (error.validation) {
+      console.error('Validation failures:', error.validation);
+      console.error(
+        'Missing required fields:',
+        error.validation
+          .map((v: any) => v.params.missingProperty)
+          .filter(Boolean)
+      );
+    }
     console.error('Valid types are:', validTypes);
-    reply.status(error.statusCode || 500).send(error);
+    console.error('Stack trace:', error.stack);
+    reply.status(error.statusCode || 500).send({
+      error: error.message,
+      validation: error.validation,
+      validTypes,
+      statusCode: error.statusCode || 500,
+    });
   });
 
   return server;
 };
 
 const run = async () => {
+  if (!process.env.API_KEY) {
+    throw new Error('API_KEY environment variable is required');
+  }
+
   const queues = await setupQueue();
   const server = setupServer(queues);
 
@@ -127,6 +161,8 @@ const run = async () => {
 };
 
 run().catch((e) => {
+  console.error('Application startup failed:');
   console.error(e);
+  console.error('Stack trace:', e.stack);
   process.exit(1);
 });

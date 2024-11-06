@@ -9,14 +9,7 @@ export const handleAddEmbeddingJob = (queue: Queue) => {
   ) => {
     const { type, content, groups, users, tags, externalId } = req.body;
 
-    if (
-      !type ||
-      !content ||
-      !groups.length ||
-      !users.length ||
-      !tags ||
-      !externalId
-    ) {
+    if (!type || !content || !externalId) {
       reply.status(400).send({ error: 'Missing required fields' });
       return;
     }
