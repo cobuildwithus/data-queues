@@ -63,14 +63,7 @@ const setupServer = (queues: {
           properties: {
             type: {
               type: 'string',
-              enum: [
-                'grant',
-                'cast',
-                'grant-application',
-                'flow',
-                'dispute',
-                'draft',
-              ],
+              enum: validTypes,
             },
             tags: {
               type: 'array',
@@ -112,6 +105,13 @@ const setupServer = (queues: {
     },
     handleDeleteEmbedding(queues.deletionQueue)
   );
+
+  server.setErrorHandler((error, request, reply) => {
+    console.error('Request body:', JSON.stringify(request.body, null, 2));
+    console.error('Validation error details:', error);
+    console.error('Valid types are:', validTypes);
+    reply.status(error.statusCode || 500).send(error);
+  });
 
   return server;
 };
