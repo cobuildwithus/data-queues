@@ -138,9 +138,13 @@ const storeJobId = async (jobId: string, contentHash: string) => {
 // if it exists, return the existing hash
 // if it doesn't exist, create a new hash and store it in redis
 // return the new hash
-export const getContentHash = async (content: string, type: string) => {
+export const getContentHash = async (
+  content: string,
+  type: string,
+  hashSuffix?: string
+) => {
   const contentHash = createHash('sha256')
-    .update(`${type}-${content}`)
+    .update(`${type}-${content}-${hashSuffix ?? ''}`)
     .digest('hex');
   return contentHash;
 };
@@ -175,7 +179,11 @@ const contentHashPrefix = `v${version}-content:`;
 
 // Helper to check and store content hash
 const handleContentHash = async (job: JobBody) => {
-  const contentHash = await getContentHash(job.content, job.type);
+  const contentHash = await getContentHash(
+    job.content,
+    job.type,
+    job.hashSuffix
+  );
   const existingJobId = await redisClient.get(
     `${contentHashPrefix}${contentHash}`
   );

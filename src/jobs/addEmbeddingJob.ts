@@ -7,7 +7,8 @@ export const handleAddEmbeddingJob = (queue: Queue) => {
     req: FastifyRequest<{ Body: JobBody }>,
     reply: FastifyReply
   ) => {
-    const { type, content, groups, users, tags, externalId } = req.body;
+    const { type, content, groups, users, tags, externalId, hashSuffix } =
+      req.body;
 
     if (!type || !content || !externalId) {
       reply.status(400).send({ error: 'Missing required fields' });
@@ -40,6 +41,7 @@ export const handleAddEmbeddingJob = (queue: Queue) => {
       users,
       tags,
       externalId,
+      hashSuffix,
     });
 
     reply.send({

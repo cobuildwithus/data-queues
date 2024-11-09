@@ -5,6 +5,7 @@ export interface JobBody {
   users: string[];
   tags: string[];
   externalId: string;
+  hashSuffix?: string;
 }
 
 export interface DeletionJobBody {

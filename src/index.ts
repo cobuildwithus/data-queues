@@ -92,6 +92,7 @@ const setupServer = (queues: {
               items: { type: 'string' },
             },
             externalId: { type: 'string' },
+            hashSuffix: { type: 'string' },
           },
         },
       },
