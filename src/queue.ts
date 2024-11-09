@@ -83,7 +83,7 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 
       return { jobId, contentHash, message: 'Successfully added embedding' };
     },
-    { connection }
+    { connection, concurrency: 10 }
   );
 };
 
