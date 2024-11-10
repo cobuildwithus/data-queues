@@ -87,6 +87,67 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
   );
 };
 
+export const setupBulkQueueProcessor = async <T = JobBody>(
+  queueName: string
+) => {
+  await ensureRedisConnected();
+
+  new Worker<T[]>(
+    queueName,
+    async (job: Job<T[]>) => {
+      const jobId = job.id;
+      if (!jobId) {
+        throw new Error('Job ID is required');
+      }
+
+      const results = [];
+      const data = job.data as JobBody[];
+
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        await updateJobProgress(job, 'processing', (i / data.length) * 100);
+
+        const { exists, contentHash } = await handleContentHash(item);
+
+        if (exists) {
+          log(
+            `Content ${i + 1}/${data.length} already processed, skipping...`,
+            job
+          );
+          results.push({
+            jobId,
+            hash: contentHash,
+            message: 'Content already processed',
+          });
+          continue;
+        }
+
+        const embedding = await getEmbedding(item.content);
+        log(
+          `Generated embedding ${i + 1}/${data.length} with ${
+            embedding.length
+          } dimensions`,
+          job
+        );
+
+        await storeEmbedding(embedding, item, contentHash);
+        await storeJobId(jobId, contentHash);
+
+        results.push({
+          jobId,
+          contentHash,
+          message: 'Successfully added embedding',
+        });
+      }
+
+      await updateJobProgress(job, 'processing', 100);
+
+      return results;
+    },
+    { connection, concurrency: 5 }
+  );
+};
+
 export const setupDeletionQueueProcessor = async (queueName: string) => {
   await ensureRedisConnected();
 

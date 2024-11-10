@@ -1,6 +1,3 @@
-import { createBullBoard } from '@bull-board/api';
-import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
-import { FastifyAdapter } from '@bull-board/fastify';
 import fastify, { FastifyInstance } from 'fastify';
 import { Server, IncomingMessage, ServerResponse } from 'http';
 import { Queue } from 'bullmq';
@@ -8,11 +5,18 @@ import {
   createQueue,
   setupQueueProcessor,
   setupDeletionQueueProcessor,
+  setupBulkQueueProcessor,
 } from './queue';
 import { DeletionJobBody, JobBody, validTypes } from './types/job';
 import 'dotenv/config';
 import { handleAddEmbeddingJob } from './jobs/addEmbeddingJob';
 import { handleDeleteEmbedding } from './jobs/deleteEmbedding';
+import { setupBullBoard, validateApiKey, handleError } from './lib/helpers';
+import {
+  addJobSchema,
+  deleteEmbeddingSchema,
+  bulkAddJobSchema,
+} from './lib/schemas';
 
 const setupQueue = async () => {
   const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
@@ -20,33 +24,9 @@ const setupQueue = async () => {
 
   await setupQueueProcessor<JobBody>(embeddingsQueue.name);
   await setupDeletionQueueProcessor(deletionQueue.name);
+  await setupBulkQueueProcessor<JobBody>(embeddingsQueue.name);
 
   return { embeddingsQueue, deletionQueue };
-};
-
-const setupBullBoard = (server: FastifyInstance, queues: Queue[]) => {
-  const serverAdapter = new FastifyAdapter();
-  createBullBoard({
-    queues: queues.map((queue) => new BullMQAdapter(queue)),
-    serverAdapter,
-  });
-  serverAdapter.setBasePath('/');
-  server.register(serverAdapter.registerPlugin(), {
-    prefix: '/',
-    basePath: '/',
-  });
-};
-
-const validateApiKey = (request: any, reply: any, done: any) => {
-  console.log('Validating API key');
-  const apiKey = request.headers['x-api-key'];
-  if (!apiKey || apiKey !== process.env.API_KEY) {
-    console.log('Invalid API key');
-    reply.code(401).send({ error: 'Invalid or missing API key' });
-    return;
-  }
-  console.log('Valid API key');
-  done();
 };
 
 const setupServer = (queues: {
@@ -62,87 +42,34 @@ const setupServer = (queues: {
     '/add-job',
     {
       preHandler: validateApiKey,
-      schema: {
-        body: {
-          type: 'object',
-          required: [
-            'type',
-            'content',
-            'groups',
-            'users',
-            'tags',
-            'externalId',
-          ],
-          properties: {
-            type: {
-              type: 'string',
-              enum: validTypes,
-            },
-            content: { type: 'string' },
-            groups: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            users: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            tags: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            externalId: { type: 'string' },
-            hashSuffix: { type: 'string' },
-          },
-        },
-      },
+      schema: addJobSchema,
     },
     handleAddEmbeddingJob(queues.embeddingsQueue)
+  );
+
+  server.post(
+    '/bulk-add-job',
+    {
+      preHandler: validateApiKey,
+      schema: bulkAddJobSchema,
+    },
+    async (request, reply) => {
+      const { jobs } = request.body as { jobs: JobBody[] };
+      const job = await queues.embeddingsQueue.add('bulk-embedding', jobs);
+      reply.send({ jobId: job.id });
+    }
   );
 
   server.post(
     '/delete-embedding',
     {
       preHandler: validateApiKey,
-      schema: {
-        body: {
-          type: 'object',
-          required: ['contentHash', 'type'],
-          properties: {
-            contentHash: { type: 'string' },
-            type: {
-              type: 'string',
-              enum: validTypes,
-            },
-          },
-        },
-      },
+      schema: deleteEmbeddingSchema,
     },
     handleDeleteEmbedding(queues.deletionQueue)
   );
 
-  server.setErrorHandler((error, request, reply) => {
-    console.error('Error occurred while processing request:');
-    console.error('Request body:', JSON.stringify(request.body, null, 2));
-    console.error('Validation error details:', error);
-    if (error.validation) {
-      console.error('Validation failures:', error.validation);
-      console.error(
-        'Missing required fields:',
-        error.validation
-          .map((v: any) => v.params.missingProperty)
-          .filter(Boolean)
-      );
-    }
-    console.error('Valid types are:', validTypes);
-    console.error('Stack trace:', error.stack);
-    reply.status(error.statusCode || 500).send({
-      error: error.message,
-      validation: error.validation,
-      validTypes,
-      statusCode: error.statusCode || 500,
-    });
-  });
+  server.setErrorHandler(handleError);
 
   return server;
 };
