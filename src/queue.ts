@@ -9,21 +9,24 @@ import { and, eq } from 'drizzle-orm';
 
 const version = 17;
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required');
+}
+
+if (!process.env.REDIS_URL) {
+  throw new Error('REDIS_URL environment variable is required');
+}
+
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY as string,
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const connection: ConnectionOptions = {
-  host: process.env.REDISHOST as string,
-  port: Number(process.env.REDISPORT),
-  username: process.env.REDISUSER as string,
-  password: process.env.REDISPASSWORD as string,
+  url: process.env.REDIS_URL,
 };
 
 const redisClient = createClient({
-  url: `redis://${process.env.REDISHOST}:${process.env.REDISPORT}`,
-  username: process.env.REDISUSER as string,
-  password: process.env.REDISPASSWORD as string,
+  url: process.env.REDIS_URL,
 });
 
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
