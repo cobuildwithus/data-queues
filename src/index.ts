@@ -21,22 +21,28 @@ import {
 const setupQueue = async () => {
   const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
   const deletionQueue = createQueue<DeletionJobBody>('DeletionQueue');
+  const bulkEmbeddingsQueue = createQueue<JobBody[]>('BulkEmbeddingsQueue');
 
   await setupQueueProcessor<JobBody>(embeddingsQueue.name);
   await setupDeletionQueueProcessor(deletionQueue.name);
-  await setupBulkQueueProcessor<JobBody>(embeddingsQueue.name);
+  await setupBulkQueueProcessor<JobBody>(bulkEmbeddingsQueue.name);
 
-  return { embeddingsQueue, deletionQueue };
+  return { embeddingsQueue, deletionQueue, bulkEmbeddingsQueue };
 };
 
 const setupServer = (queues: {
   embeddingsQueue: Queue;
   deletionQueue: Queue;
+  bulkEmbeddingsQueue: Queue;
 }) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();
 
-  setupBullBoard(server, [queues.embeddingsQueue, queues.deletionQueue]);
+  setupBullBoard(server, [
+    queues.embeddingsQueue,
+    queues.deletionQueue,
+    queues.bulkEmbeddingsQueue,
+  ]);
 
   server.post(
     '/add-job',
@@ -55,7 +61,7 @@ const setupServer = (queues: {
     },
     async (request, reply) => {
       const { jobs } = request.body as { jobs: JobBody[] };
-      const job = await queues.embeddingsQueue.add('bulk-embedding', jobs);
+      const job = await queues.bulkEmbeddingsQueue.add('bulk-embedding', jobs);
       reply.send({ jobId: job.id });
     }
   );
