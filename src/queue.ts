@@ -37,6 +37,8 @@ redisClient.on('error', (err) => console.error('Redis Client Error', err));
 let redisConnected = false;
 const ensureRedisConnected = async () => {
   if (!redisConnected) {
+    console.log('Connecting to Redis...');
+    console.log(process.env.REDIS_URL);
     await redisClient.connect();
     redisConnected = true;
   }
