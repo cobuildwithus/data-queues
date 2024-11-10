@@ -27,6 +27,9 @@ const connection: ConnectionOptions = {
 
 const redisClient = createClient({
   url: process.env.REDIS_URL,
+  socket: {
+    family: 6,
+  },
 });
 
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
