@@ -101,7 +101,7 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
 
       return { jobId, contentHash, message: 'Successfully added embedding' };
     },
-    { connection, concurrency: 50 }
+    { connection, concurrency: 50, lockRenewTime: 25000, lockDuration: 90000 }
   );
 };
 
@@ -169,7 +169,7 @@ export const setupBulkQueueProcessor = async <T = JobBody>(
 
       return results;
     },
-    { connection, concurrency: 9 }
+    { connection, concurrency: 9, lockRenewTime: 25000, lockDuration: 90000 }
   );
 };
 
