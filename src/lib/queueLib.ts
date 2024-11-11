@@ -76,7 +76,8 @@ export const getEmbedding = async (
 
       if (type === 'image') {
         const summary = await describeImage(url);
-        if (summary) {
+        // Only add non-empty summaries that aren't just empty quotes
+        if (summary && summary.trim() !== '""' && summary.trim() !== '') {
           summaries.push(summary);
         }
       }
