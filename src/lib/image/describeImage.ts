@@ -5,12 +5,26 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // Ensure your API key is stored securely
 });
 
+const nonImageDomains = [
+  'youtube',
+  'm3u8',
+  'mp4',
+  'vrbs.build',
+  'youtu.be',
+  'vimeo',
+];
+
 /**
  * Analyzes an image from a URL and returns a description.
  * @param imageUrl - The URL of the image to analyze.
  * @returns A promise that resolves to the description of the image.
  */
 export async function describeImage(imageUrl: string): Promise<string | null> {
+  // return null if imageUrl is a youtube video
+  if (nonImageDomains.some((domain) => imageUrl.includes(domain))) {
+    return null;
+  }
+
   // Convert imagedelivery URL before attempting to process
   if (imageUrl.startsWith('https://imagedelivery.net/BXluQx4ige9GuW0Ia56BHw')) {
     imageUrl = convertImageDeliveryUrl(imageUrl);
