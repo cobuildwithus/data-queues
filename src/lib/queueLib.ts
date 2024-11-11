@@ -112,7 +112,7 @@ export const storeEmbedding = async (
   job: JobBody,
   contentHash: string
 ) => {
-  const res = await db
+  await db
     .insert(embeddings)
     .values({
       id: crypto.randomUUID(),
