@@ -13,6 +13,7 @@ import {
   storeEmbedding,
   handleContentHash,
   contentHashPrefix,
+  shouldGetUrlSummaries,
 } from './lib/queueLib';
 
 if (!process.env.OPENAI_API_KEY) {
@@ -86,7 +87,8 @@ export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
       const { embedding, input, urlSummaries } = await getEmbedding(
         openai,
         data.content,
-        data.urls
+        data.urls,
+        shouldGetUrlSummaries(data.groups)
       );
       log(`Generated embedding with ${embedding.length} dimensions`, job);
       await storeEmbedding(embedding, input, urlSummaries, data, contentHash);
@@ -146,7 +148,8 @@ export const setupBulkQueueProcessor = async <T = JobBody>(
         const { embedding, input, urlSummaries } = await getEmbedding(
           openai,
           item.content,
-          item.urls
+          item.urls,
+          shouldGetUrlSummaries(item.groups)
         );
         log(
           `Generated embedding ${i + 1}/${data.length} with ${

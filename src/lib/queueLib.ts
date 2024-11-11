@@ -55,12 +55,13 @@ export const storeJobId = async (
 export const getEmbedding = async (
   openai: OpenAI,
   text: string,
-  urls?: string[]
+  urls?: string[],
+  getUrlSummaries?: boolean // only if in valid channels
 ): Promise<{ embedding: number[]; input: string; urlSummaries: string[] }> => {
   let input = text.replace('\n', ' ');
   const summaries: string[] = [];
 
-  if (urls && urls.length > 0) {
+  if (urls && urls.length > 0 && getUrlSummaries) {
     let type: 'image' | 'video' | null = null;
 
     // Process each URL
@@ -151,4 +152,22 @@ export const handleContentHash = async (redisClient: any, job: JobBody) => {
   }
 
   return { exists: false, jobId: null, contentHash };
+};
+
+// Validate that groups contain required channels
+export const shouldGetUrlSummaries = (groups: string[]) => {
+  const requiredChannels = [
+    'https://warpcast.com/~/channel/vrbs',
+    'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03', // nouns
+    'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c', // gnars
+    'https://warpcast.com/~/channel/flows',
+    'https://warpcast.com/~/channel/yellow',
+  ];
+
+  // Check if any of the required channels are present in groups
+  const hasRequiredChannel = groups.some((group) =>
+    requiredChannels.includes(group.toLowerCase())
+  );
+
+  return hasRequiredChannel;
 };
