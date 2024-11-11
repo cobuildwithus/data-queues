@@ -49,6 +49,7 @@ export async function describeImage(imageUrl: string): Promise<string> {
       console.error('Error describing image');
       console.error(error, imageUrl);
     }
+    console.log(error?.message, error?.code);
     throw new Error('Failed to describe image.');
   }
 }
