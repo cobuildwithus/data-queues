@@ -22,6 +22,10 @@ export const addJobSchema = {
         type: 'array',
         items: { type: 'string' },
       },
+      urls: {
+        type: 'array',
+        items: { type: 'string' },
+      },
       externalId: { type: 'string' },
       hashSuffix: { type: 'string' },
     },
@@ -60,6 +64,10 @@ export const bulkAddJobSchema = {
               items: { type: 'string' },
             },
             tags: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            urls: {
               type: 'array',
               items: { type: 'string' },
             },

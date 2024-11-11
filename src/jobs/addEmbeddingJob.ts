@@ -7,7 +7,7 @@ export const handleAddEmbeddingJob = (queue: Queue) => {
     req: FastifyRequest<{ Body: JobBody }>,
     reply: FastifyReply
   ) => {
-    const { type, content, groups, users, tags, externalId, hashSuffix } =
+    const { type, content, groups, users, tags, externalId, hashSuffix, urls } =
       req.body;
 
     if (!type || !content || !externalId) {
@@ -42,6 +42,7 @@ export const handleAddEmbeddingJob = (queue: Queue) => {
       tags,
       externalId,
       hashSuffix,
+      urls,
     });
 
     reply.send({

@@ -17,6 +17,7 @@ import {
   deleteEmbeddingSchema,
   bulkAddJobSchema,
 } from './lib/schemas';
+import { handleBulkAddEmbeddingJob } from './jobs/addBulkEmbeddingJob';
 
 const setupQueue = async () => {
   const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
@@ -59,11 +60,7 @@ const setupServer = (queues: {
       preHandler: validateApiKey,
       schema: bulkAddJobSchema,
     },
-    async (request, reply) => {
-      const { jobs } = request.body as { jobs: JobBody[] };
-      const job = await queues.bulkEmbeddingsQueue.add('bulk-embedding', jobs);
-      reply.send({ jobId: job.id });
-    }
+    handleBulkAddEmbeddingJob(queues.bulkEmbeddingsQueue)
   );
 
   server.post(

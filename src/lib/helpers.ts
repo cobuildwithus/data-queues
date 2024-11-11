@@ -18,14 +18,13 @@ export const setupBullBoard = (server: FastifyInstance, queues: Queue[]) => {
 };
 
 export const validateApiKey = (request: any, reply: any, done: any) => {
-  console.log('Validating API key');
   const apiKey = request.headers['x-api-key'];
   if (!apiKey || apiKey !== process.env.API_KEY) {
     console.log('Invalid API key');
     reply.code(401).send({ error: 'Invalid or missing API key' });
     return;
   }
-  console.log('Valid API key');
+
   done();
 };
 
