@@ -174,7 +174,7 @@ export const setupBulkQueueProcessor = async <T = JobBody>(
     },
     {
       connection,
-      concurrency: 20,
+      concurrency: 23,
       lockRenewTime: 1800000,
       lockDuration: 1800000,
     }
