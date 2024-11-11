@@ -11,6 +11,11 @@ const client = new OpenAI({
  * @returns A promise that resolves to the description of the image.
  */
 export async function describeImage(imageUrl: string): Promise<string | null> {
+  // Convert imagedelivery URL before attempting to process
+  if (imageUrl.startsWith('https://imagedelivery.net/BXluQx4ige9GuW0Ia56BHw')) {
+    imageUrl = convertImageDeliveryUrl(imageUrl);
+  }
+
   let attempts = 0;
   const maxAttempts = 5;
 
@@ -95,5 +100,5 @@ async function handleOtherErrors(
 function convertImageDeliveryUrl(imageUrl: string): string {
   return imageUrl
     .replace('imagedelivery.net', 'wrpcd.net/cdn-cgi/imagedelivery')
-    .replace(/\/([^/]+)\/([^/]+)$/, (_, id, size) => `/${id}/${size}`);
+    .replace(/\/([^/]+)\/original$/, (_, id) => `/${id}/rectcontain3`);
 }
