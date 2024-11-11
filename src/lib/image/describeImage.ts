@@ -10,7 +10,7 @@ const client = new OpenAI({
  * @param imageUrl - The URL of the image to analyze.
  * @returns A promise that resolves to the description of the image.
  */
-export async function describeImage(imageUrl: string): Promise<string> {
+export async function describeImage(imageUrl: string): Promise<string | null> {
   try {
     // Create a chat completion request with the image URL
     const response = await client.chat.completions.create({
@@ -50,6 +50,6 @@ export async function describeImage(imageUrl: string): Promise<string> {
       console.error(error, imageUrl);
     }
     console.log(error?.message, error?.code);
-    throw new Error('Failed to describe image.');
+    return null;
   }
 }
