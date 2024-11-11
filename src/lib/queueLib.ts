@@ -123,9 +123,9 @@ export const storeEmbedding = async (
       contentHash: contentHash,
       embedding: embedding,
       version: version,
-      groups: job.groups.map((group) => group.toLowerCase()),
-      users: job.users.map((user) => user.toLowerCase()),
-      tags: job.tags.map((tag) => tag.toLowerCase()),
+      groups: [...new Set(job.groups.map((group) => group.toLowerCase()))],
+      users: [...new Set(job.users.map((user) => user.toLowerCase()))],
+      tags: [...new Set(job.tags.map((tag) => tag.toLowerCase()))],
       externalId: job.externalId,
     })
     .onConflictDoNothing();
