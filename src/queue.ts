@@ -169,7 +169,7 @@ export const setupBulkQueueProcessor = async <T = JobBody>(
 
       return results;
     },
-    { connection, concurrency: 20 }
+    { connection, concurrency: 5 }
   );
 };
 
