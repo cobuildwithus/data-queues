@@ -172,7 +172,7 @@ export const setupBulkQueueProcessor = async <T = JobBody>(
 
       return results;
     },
-    { connection, concurrency: 15, lockRenewTime: 300000, lockDuration: 600000 }
+    { connection, concurrency: 18, lockRenewTime: 300000, lockDuration: 600000 }
   );
 };
 
