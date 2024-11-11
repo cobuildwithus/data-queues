@@ -6,7 +6,7 @@ import { createHash } from 'crypto';
 import OpenAI from 'openai';
 import { describeImage } from './image/describeImage';
 
-const version = 20;
+const version = 21;
 export const contentHashPrefix = `v${version}-content:`;
 
 // Helper to update job progress
@@ -124,9 +124,11 @@ export const storeEmbedding = async (
       contentHash: contentHash,
       embedding: embedding,
       version: version,
-      groups: [...new Set(job.groups.map((group) => group.toLowerCase()))],
-      users: [...new Set(job.users.map((user) => user.toLowerCase()))],
-      tags: [...new Set(job.tags.map((tag) => tag.toLowerCase()))],
+      groups: Array.from(
+        new Set(job.groups.map((group) => group.toLowerCase()))
+      ),
+      users: Array.from(new Set(job.users.map((user) => user.toLowerCase()))),
+      tags: Array.from(new Set(job.tags.map((tag) => tag.toLowerCase()))),
       externalId: job.externalId,
     })
     .onConflictDoNothing();
