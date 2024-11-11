@@ -6,7 +6,7 @@ import { createHash } from 'crypto';
 import OpenAI from 'openai';
 import { describeImage } from './image/describeImage';
 
-const version = 19;
+const version = 20;
 export const contentHashPrefix = `v${version}-content:`;
 
 // Helper to update job progress

@@ -46,29 +46,54 @@ export async function describeImage(imageUrl: string): Promise<string | null> {
       console.log({ description, imageUrl });
       return description || 'No description available.';
     } catch (error: any) {
-      // Only retry on rate limit errors (429)
+      if (attempts === maxAttempts) {
+        handleMaxAttemptsError(imageUrl, error);
+        return null;
+      }
+
       if (error?.status === 429) {
         attempts++;
-        if (attempts === maxAttempts) {
-          console.error('Rate limit reached after max retries', imageUrl);
-          console.error(error);
-          return null;
-        }
-        // Wait for 1 second before retrying
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await handleRateLimitError();
       } else {
-        // Log specific errors without retrying
-        if (error.code === 'invalid_image_url') {
-          console.error('Invalid image URL', imageUrl);
-        } else if (error.code === 'invalid_image_format') {
-          console.error('Invalid image format', imageUrl);
-        } else {
-          console.error('Error describing image');
-          console.error(error, imageUrl);
-        }
-        return null;
+        return await handleOtherErrors(error, imageUrl, attempts);
       }
     }
   }
   return null;
+}
+
+function handleMaxAttemptsError(imageUrl: string, error: any) {
+  console.error('Rate limit reached after max retries', imageUrl);
+  console.error(error);
+}
+
+async function handleRateLimitError() {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+
+async function handleOtherErrors(
+  error: any,
+  imageUrl: string,
+  attempts: number
+): Promise<string | null> {
+  if (
+    error.code === 'invalid_image_url' ||
+    error.code === 'invalid_image_format'
+  ) {
+    if (imageUrl.startsWith('https://imagedelivery.net/')) {
+      const newUrl = convertImageDeliveryUrl(imageUrl);
+      return await describeImage(newUrl);
+    }
+    console.error(`${error.code}:`, imageUrl);
+  } else {
+    console.error('Error describing image');
+    console.error(error, imageUrl);
+  }
+  return null;
+}
+
+function convertImageDeliveryUrl(imageUrl: string): string {
+  return imageUrl
+    .replace('imagedelivery.net', 'wrpcd.net/cdn-cgi/imagedelivery')
+    .replace(/\/([^/]+)\/([^/]+)$/, (_, id, size) => `/${id}/${size}`);
 }
