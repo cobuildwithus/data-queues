@@ -30,7 +30,7 @@ export async function describeImage(imageUrl: string): Promise<string | null> {
                   Don't include too much data about the image, just the important details that contribute to the overall meaning.
                   Ensure that you first define what exactly you believe the image is, whether it's a photo, a painting, a drawing, screenshot of a web page etc.
                   Include information on subjects, actions, settings, emotions, and any inferred meanings to facilitate accurate embedding. 
-                  If you see a person wearing square glasses, especially if they are red, they might be called noggles. 
+                  If you see a person wearing square glasses, especially if they are red, they might be called noggles, so mention the word noggles if it's relevant.
                   Make sure to pay attention to glasses and these details, but you don't need to mention them in the description if they are not present in the image.
                   The information you share will be fed to an embedding model, so don't use new lines or other formatting. Make it all lowercase.
                   DO NOT return anything if you cannot access the image or it is otherwise unavilable. Just return an empty string.`,
