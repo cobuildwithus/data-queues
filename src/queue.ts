@@ -175,8 +175,8 @@ export const setupBulkQueueProcessor = async <T = JobBody>(
     {
       connection,
       concurrency: 40, // Number of jobs that can be processed simultaneously
-      lockRenewTime: 1200000, // 20 minutes - How often to renew the lock
-      lockDuration: 3600000, // 60 minutes - How long to hold the lock for
+      lockRenewTime: 3600000, // 1 hour - How often to renew the lock
+      lockDuration: 7200000, // 2 hours - How long to hold the lock for
     }
   );
 };
