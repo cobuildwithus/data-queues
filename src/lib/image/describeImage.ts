@@ -87,7 +87,7 @@ function handleMaxAttemptsError(imageUrl: string, error: any) {
 }
 
 async function handleRateLimitError() {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 30000));
 }
 
 async function handleOtherErrors(
