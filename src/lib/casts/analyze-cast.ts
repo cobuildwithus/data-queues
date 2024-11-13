@@ -88,6 +88,9 @@ export async function analyzeCast(
         Pay special attention to the requirements of the parent flow, which dictate what types of work are eligible for the grant, and should
         inform whether or not the cast should be counted as an update on work done for the grant.
         If the cast content is not provided, there must be attachments to determine if it's a grant update.
+        If the grant description has some details about side projects or other work the builder is involved in,
+        you should make sure not to count any information in the cast that relates to that side work.
+        The cast must be specifically related to the grant to be counted as an update.
 
         Grant Details:
         Grant ID: ${job.grantId}
