@@ -56,11 +56,22 @@ export const isGrantUpdateWorker = async (
 
             if (updated && timestamp && timestamp > lastBuilderUpdate) {
               await flowsDb
-                .update(derivedData)
-                .set({
+                .insert(derivedData)
+                .values({
+                  grantId: cast.grantId,
                   lastBuilderUpdate: timestamp,
+                  id: cast.grantId,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  minimumSalary: null,
+                  template: null,
                 })
-                .where(eq(derivedData.grantId, cast.grantId));
+                .onConflictDoUpdate({
+                  target: derivedData.grantId,
+                  set: {
+                    lastBuilderUpdate: timestamp,
+                  },
+                });
             }
           }
 
