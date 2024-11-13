@@ -6,6 +6,8 @@ import { RedisClientType } from 'redis';
 import { farcasterCasts } from '../database/farcaster-schema';
 import { farcasterDb } from '../database/farcasterDb';
 import { eq, sql } from 'drizzle-orm';
+import { flowsDb } from '../database/flowsDb';
+import { derivedData } from '../database/flows-schema';
 
 export const isGrantUpdateWorker = async (
   queueName: string,
@@ -33,12 +35,25 @@ export const isGrantUpdateWorker = async (
               'hex'
             );
 
-            await farcasterDb
+            const updated = await farcasterDb
               .update(farcasterCasts)
               .set({
                 computedTags: sql`array_append(array_remove(computed_tags, ${result.grantId}), ${result.grantId})`,
               })
-              .where(sql`hash = ${castHashBuffer}`);
+              .where(sql`hash = ${castHashBuffer}`)
+              .returning();
+
+            // get timestamp of updated cast
+            const timestamp = updated[0].timestamp;
+
+            if (updated && timestamp) {
+              await flowsDb
+                .update(derivedData)
+                .set({
+                  lastBuilderUpdate: timestamp,
+                })
+                .where(eq(derivedData.grantId, cast.grantId));
+            }
           }
 
           log(
