@@ -63,8 +63,8 @@ export const isGrantUpdateWorker = async (
     {
       connection,
       concurrency: 5, // Lower concurrency since this involves AI analysis
-      lockDuration: 30000, // 30 seconds
-      lockRenewTime: 15000, // 15 seconds
+      lockDuration: 1200000, // 20 minutes
+      lockRenewTime: 600000, // 10 minutes (half of lockDuration)
     }
   );
 };
