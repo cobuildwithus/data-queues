@@ -1,15 +1,15 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
 import { DeletionJobBody } from '../types/job';
 import { embeddings } from '../database/schema';
 import { db } from '../database/db';
 import { and, eq } from 'drizzle-orm';
 import { updateJobProgress, log, contentHashPrefix } from '../lib/queueLib';
-import { RedisClient } from '../queue';
+import { RedisClientType } from 'redis';
 
 export const deletionQueueWorker = async (
   queueName: string,
-  connection: any,
-  redisClient: RedisClient
+  connection: RedisOptions | ClusterOptions,
+  redisClient: RedisClientType
 ) => {
   new Worker<DeletionJobBody>(
     queueName,

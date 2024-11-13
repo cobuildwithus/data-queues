@@ -5,6 +5,7 @@ import { embeddings } from '../database/schema';
 import { createHash } from 'crypto';
 import OpenAI from 'openai';
 import { describeImage } from './image/describeImage';
+import { RedisClientType } from 'redis';
 
 const version = 21;
 export const contentHashPrefix = `v${version}-content:`;
@@ -51,19 +52,15 @@ export const storeJobId = async (
   await redisClient.set(`${contentHashPrefix}${contentHash}`, jobId);
 };
 
-// Get embeddings from OpenAI
-export const getEmbedding = async (
-  openai: OpenAI,
-  text: string,
-  urls?: string[],
-  getUrlSummaries?: boolean // only if in valid channels
-): Promise<{ embedding: number[]; input: string; urlSummaries: string[] }> => {
-  let input = text.replace('\n', ' ');
+// Get URL summaries from a list of URLs
+export const fetchEmbeddingSummaries = async (
+  redisClient: RedisClientType,
+  urls?: string[]
+): Promise<{ type: 'image' | 'video' | null; summaries: string[] }> => {
   const summaries: string[] = [];
+  let type: 'image' | 'video' | null = null;
 
-  if (urls && urls.length > 0 && getUrlSummaries) {
-    let type: 'image' | 'video' | null = null;
-
+  if (urls && urls.length > 0) {
     // Process each URL
     for (const url of urls) {
       if (!url) continue;
@@ -76,18 +73,35 @@ export const getEmbedding = async (
       }
 
       if (type === 'image') {
-        const summary = await describeImage(url);
+        const summary = await describeImage(url, redisClient);
         // Only add non-empty summaries that aren't just empty quotes
         if (summary && summary.trim() !== '""' && summary.trim() !== '') {
           summaries.push(summary);
         }
       }
     }
+  }
 
-    // Add URL context to input text
-    if (summaries.length > 0) {
-      input += ` [Contains ${type}: ${summaries.join(', ')}]`;
-    }
+  return { type, summaries };
+};
+
+// Get embeddings from OpenAI
+export const getEmbedding = async (
+  redisClient: RedisClientType,
+  openai: OpenAI,
+  text: string,
+  urls?: string[],
+  getUrlSummaries?: boolean // only if in valid channels
+): Promise<{ embedding: number[]; input: string; urlSummaries: string[] }> => {
+  let input = text.replace('\n', ' ');
+
+  const { type, summaries } = getUrlSummaries
+    ? await fetchEmbeddingSummaries(redisClient, urls)
+    : { type: null, summaries: [] };
+
+  // Add URL context to input text
+  if (summaries.length > 0) {
+    input += ` [Contains ${type}: ${summaries.join(', ')}]`;
   }
 
   if (summaries.length > 0) {

@@ -42,9 +42,11 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^0.0.56",
     "@bull-board/api": "^6.3.3",
     "@bull-board/fastify": "^6.3.3",
     "@bull-board/ui": "^6.3.3",
+    "ai": "^3.4.33",
     "bullmq": "^5.23.0",
     "dotenv": "^16.4.5",
     "drizzle-kit": "^0.27.1",
@@ -53,6 +55,7 @@
     "fastify": "^5.1.0",
     "openai": "^4.70.3",
     "pg": "^8.13.1",
-    "redis": "^4.7.0"
+    "redis": "^4.7.0",
+    "zod": "^3.23.8"
   }
 }

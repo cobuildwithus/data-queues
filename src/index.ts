@@ -6,8 +6,8 @@ import {
   setupQueueProcessor,
   setupDeletionQueueProcessor,
   setupBulkQueueProcessor,
+  setupIsGrantUpdateQueueProcessor,
 } from './queue';
-import { DeletionJobBody, JobBody, validTypes } from './types/job';
 import 'dotenv/config';
 import { handleAddEmbeddingJob } from './jobs/addEmbeddingJob';
 import { handleDeleteEmbedding } from './jobs/deleteEmbedding';
@@ -16,25 +16,35 @@ import {
   addJobSchema,
   deleteEmbeddingSchema,
   bulkAddJobSchema,
+  isGrantUpdateSchema,
 } from './lib/schemas';
 import { handleBulkAddEmbeddingJob } from './jobs/addBulkEmbeddingJob';
+import { handleBulkAddIsGrantUpdateJob } from './jobs/add-bulk-is-grant-update-job';
 
 const setupQueue = async () => {
-  const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
-  const deletionQueue = createQueue<DeletionJobBody>('DeletionQueue');
-  const bulkEmbeddingsQueue = createQueue<JobBody[]>('BulkEmbeddingsQueue');
+  const embeddingsQueue = createQueue('EmbeddingsQueue');
+  const deletionQueue = createQueue('DeletionQueue');
+  const bulkEmbeddingsQueue = createQueue('BulkEmbeddingsQueue');
+  const isGrantUpdateQueue = createQueue('IsGrantUpdateQueue');
 
-  await setupQueueProcessor<JobBody>(embeddingsQueue.name);
+  await setupQueueProcessor(embeddingsQueue.name);
   await setupDeletionQueueProcessor(deletionQueue.name);
-  await setupBulkQueueProcessor<JobBody>(bulkEmbeddingsQueue.name);
+  await setupBulkQueueProcessor(bulkEmbeddingsQueue.name);
+  await setupIsGrantUpdateQueueProcessor(isGrantUpdateQueue.name);
 
-  return { embeddingsQueue, deletionQueue, bulkEmbeddingsQueue };
+  return {
+    embeddingsQueue,
+    deletionQueue,
+    bulkEmbeddingsQueue,
+    isGrantUpdateQueue,
+  };
 };
 
 const setupServer = (queues: {
   embeddingsQueue: Queue;
   deletionQueue: Queue;
   bulkEmbeddingsQueue: Queue;
+  isGrantUpdateQueue: Queue;
 }) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();
@@ -43,6 +53,7 @@ const setupServer = (queues: {
     queues.embeddingsQueue,
     queues.deletionQueue,
     queues.bulkEmbeddingsQueue,
+    queues.isGrantUpdateQueue,
   ]);
 
   server.post(
@@ -70,6 +81,15 @@ const setupServer = (queues: {
       schema: deleteEmbeddingSchema,
     },
     handleDeleteEmbedding(queues.deletionQueue)
+  );
+
+  server.post(
+    '/bulk-add-is-grants-update',
+    {
+      preHandler: validateApiKey,
+      schema: isGrantUpdateSchema,
+    },
+    handleBulkAddIsGrantUpdateJob(queues.isGrantUpdateQueue)
   );
 
   server.setErrorHandler(handleError);

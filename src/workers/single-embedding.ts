@@ -1,4 +1,4 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
 import { JobBody } from '../types/job';
 import {
   updateJobProgress,
@@ -9,18 +9,19 @@ import {
   shouldGetUrlSummaries,
   storeJobId,
 } from '../lib/queueLib';
-import { RedisClient } from '../queue';
-import OpenAI from 'openai';
 
-export const singleEmbeddingWorker = async <T>(
+import OpenAI from 'openai';
+import { RedisClientType } from 'redis';
+
+export const singleEmbeddingWorker = async (
   queueName: string,
-  connection: any,
-  redisClient: RedisClient,
+  connection: RedisOptions | ClusterOptions,
+  redisClient: RedisClientType,
   openai: OpenAI
 ) => {
-  new Worker<T>(
+  new Worker<JobBody>(
     queueName,
-    async (job: Job<T>) => {
+    async (job: Job<JobBody>) => {
       const jobId = job.id;
       if (!jobId) {
         throw new Error('Job ID is required');
@@ -49,6 +50,7 @@ export const singleEmbeddingWorker = async <T>(
 
       // Get embeddings for the content
       const { embedding, input, urlSummaries } = await getEmbedding(
+        redisClient,
         openai,
         data.content,
         data.urls,

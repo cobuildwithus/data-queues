@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai';
+import { RedisClientType } from 'redis';
 
 // Initialize the OpenAI client with your API key
 const client = new OpenAI({
@@ -14,12 +15,36 @@ const nonImageDomains = [
   'vimeo',
 ];
 
+const IMAGE_DESCRIPTION_CACHE_PREFIX = 'image-description:';
+
+async function getCachedImageDescription(
+  redisClient: RedisClientType,
+  imageUrl: string
+): Promise<string | null> {
+  return await redisClient.get(`${IMAGE_DESCRIPTION_CACHE_PREFIX}${imageUrl}`);
+}
+
+async function cacheImageDescription(
+  redisClient: RedisClientType,
+  imageUrl: string,
+  description: string
+): Promise<void> {
+  await redisClient.set(
+    `${IMAGE_DESCRIPTION_CACHE_PREFIX}${imageUrl}`,
+    description
+  );
+}
+
 /**
  * Analyzes an image from a URL and returns a description.
  * @param imageUrl - The URL of the image to analyze.
+ * @param redisClient - Redis client for caching
  * @returns A promise that resolves to the description of the image.
  */
-export async function describeImage(imageUrl: string): Promise<string | null> {
+export async function describeImage(
+  imageUrl: string,
+  redisClient: RedisClientType
+): Promise<string | null> {
   // return null if imageUrl is a youtube video
   if (nonImageDomains.some((domain) => imageUrl.includes(domain))) {
     return null;
@@ -28,6 +53,15 @@ export async function describeImage(imageUrl: string): Promise<string | null> {
   // Convert imagedelivery URL before attempting to process
   if (imageUrl.startsWith('https://imagedelivery.net/BXluQx4ige9GuW0Ia56BHw')) {
     imageUrl = convertImageDeliveryUrl(imageUrl);
+  }
+
+  // Check cache first
+  const cachedDescription = await getCachedImageDescription(
+    redisClient,
+    imageUrl
+  );
+  if (cachedDescription) {
+    return cachedDescription;
   }
 
   let attempts = 0;
@@ -63,7 +97,13 @@ export async function describeImage(imageUrl: string): Promise<string | null> {
       // Extract and return the assistant's response
       const description = response.choices[0]?.message?.content;
       console.log({ description, imageUrl });
-      return description || 'No description available.';
+
+      // Cache the result if it's not the default message
+      if (description) {
+        await cacheImageDescription(redisClient, imageUrl, description);
+      }
+
+      return description;
     } catch (error: any) {
       if (attempts === maxAttempts) {
         handleMaxAttemptsError(imageUrl, error);
@@ -74,7 +114,7 @@ export async function describeImage(imageUrl: string): Promise<string | null> {
         attempts++;
         await handleRateLimitError();
       } else {
-        return await handleOtherErrors(error, imageUrl, attempts);
+        return await handleOtherErrors(error, imageUrl, redisClient);
       }
     }
   }
@@ -93,7 +133,7 @@ async function handleRateLimitError() {
 async function handleOtherErrors(
   error: any,
   imageUrl: string,
-  attempts: number
+  redisClient: RedisClientType
 ): Promise<string | null> {
   if (
     error.code === 'invalid_image_url' ||
@@ -101,7 +141,7 @@ async function handleOtherErrors(
   ) {
     if (imageUrl.startsWith('https://imagedelivery.net/')) {
       const newUrl = convertImageDeliveryUrl(imageUrl);
-      return await describeImage(newUrl);
+      return await describeImage(newUrl, redisClient);
     }
     console.error(`${error.code}:`, imageUrl);
   } else {

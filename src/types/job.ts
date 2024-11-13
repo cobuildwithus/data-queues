@@ -22,3 +22,12 @@ export const validTypes = [
   'dispute',
   'draft-application',
 ];
+
+export interface IsGrantUpdateJobBody {
+  castContent: string;
+  grantDescription: string;
+  parentFlowDescription: string;
+  castHash: string;
+  grantId: string;
+  urls: string[];
+}

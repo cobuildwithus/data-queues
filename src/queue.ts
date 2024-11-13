@@ -1,10 +1,11 @@
 import { ConnectionOptions, Queue } from 'bullmq';
 import { JobBody } from './types/job';
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import OpenAI from 'openai';
 import { deletionQueueWorker } from './workers/delete-embed';
 import { bulkEmbeddingsWorker } from './workers/bulk-embeddings';
 import { singleEmbeddingWorker } from './workers/single-embedding';
+import { isGrantUpdateWorker } from './workers/is-grant-update';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY environment variable is required');
@@ -26,8 +27,6 @@ const redisClient = createClient({
   url: process.env.REDIS_URL,
 });
 
-export type RedisClient = typeof redisClient;
-
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
 let redisConnected = false;
@@ -40,25 +39,38 @@ const ensureRedisConnected = async () => {
   }
 };
 
-export const createQueue = <T = JobBody>(name: string) =>
-  new Queue<T>(name, { connection });
+export const createQueue = (name: string) => new Queue(name, { connection });
 
-export const setupQueueProcessor = async <T = JobBody>(queueName: string) => {
+export const setupQueueProcessor = async (queueName: string) => {
   await ensureRedisConnected();
 
-  singleEmbeddingWorker<T>(queueName, connection, redisClient, openai);
+  singleEmbeddingWorker(
+    queueName,
+    connection,
+    redisClient as RedisClientType,
+    openai
+  );
 };
 
-export const setupBulkQueueProcessor = async <T = JobBody>(
-  queueName: string
-) => {
+export const setupBulkQueueProcessor = async (queueName: string) => {
   await ensureRedisConnected();
 
-  bulkEmbeddingsWorker<T>(queueName, connection, redisClient, openai);
+  bulkEmbeddingsWorker(
+    queueName,
+    connection,
+    redisClient as RedisClientType,
+    openai
+  );
 };
 
 export const setupDeletionQueueProcessor = async (queueName: string) => {
   await ensureRedisConnected();
 
-  deletionQueueWorker(queueName, connection, redisClient);
+  deletionQueueWorker(queueName, connection, redisClient as RedisClientType);
+};
+
+export const setupIsGrantUpdateQueueProcessor = async (queueName: string) => {
+  await ensureRedisConnected();
+
+  isGrantUpdateWorker(queueName, connection, redisClient as RedisClientType);
 };

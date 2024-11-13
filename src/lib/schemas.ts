@@ -94,3 +94,38 @@ export const deleteEmbeddingSchema = {
     },
   },
 };
+
+export const isGrantUpdateSchema = {
+  body: {
+    type: 'object',
+    required: ['jobs'],
+    properties: {
+      jobs: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: [
+            'castContent',
+            'grantDescription',
+            'parentFlowDescription',
+            'castHash',
+            'grantId',
+            'urls',
+          ],
+          properties: {
+            castContent: { type: 'string' },
+            grantDescription: { type: 'string' },
+            parentFlowDescription: { type: 'string' },
+            castHash: { type: 'string' },
+            grantId: { type: 'string' },
+            urls: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+        minItems: 1,
+      },
+    },
+  },
+};
