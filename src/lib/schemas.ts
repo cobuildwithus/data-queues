@@ -105,7 +105,6 @@ export const isGrantUpdateSchema = {
         items: {
           type: 'object',
           required: [
-            'castContent',
             'grantDescription',
             'parentFlowDescription',
             'castHash',
@@ -113,7 +112,7 @@ export const isGrantUpdateSchema = {
             'urls',
           ],
           properties: {
-            castContent: { type: 'string' },
+            castContent: { type: 'string', default: '' },
             grantDescription: { type: 'string' },
             parentFlowDescription: { type: 'string' },
             castHash: { type: 'string' },

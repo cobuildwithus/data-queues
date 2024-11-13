@@ -46,8 +46,8 @@ export async function analyzeCast(
   redisClient: RedisClientType,
   job: IsGrantUpdateJobBody
 ): Promise<CastAnalysis> {
-  if (!job.castContent) {
-    throw new Error('Cast content is required');
+  if (!job.castContent && job.urls.length === 0) {
+    throw new Error('Cast content or urls are required');
   }
 
   // Check cache first
@@ -61,10 +61,7 @@ export async function analyzeCast(
     return cachedAnalysis;
   }
 
-  const { type, summaries } = await fetchEmbeddingSummaries(
-    redisClient,
-    job.urls
-  );
+  const summaries = await fetchEmbeddingSummaries(redisClient, job.urls);
 
   const { object } = await generateObject({
     model: anthropic('claude-3-5-sonnet-20241022'),
@@ -90,16 +87,23 @@ export async function analyzeCast(
         The cast includes some images.
         Pay special attention to the requirements of the parent flow, which dictate what types of work are eligible for the grant, and should
         inform whether or not the cast should be counted as an update on work done for the grant.
+        If the cast content is not provided, there must be attachments to determine if it's a grant update.
 
         Grant Details:
         Grant ID: ${job.grantId}
         Description: ${job.grantDescription}
         Parent Flow Description: ${job.parentFlowDescription}
-        The update contains ${type}: ${summaries.join(', ')}`,
+        ${
+          summaries.length
+            ? `The update contains attachments: ${summaries.join(', ')}`
+            : 'The update contains no attachments'
+        }`,
       },
       {
         role: 'user',
-        content: [{ type: 'text', text: job.castContent }],
+        content: [
+          { type: 'text', text: job.castContent || 'NO CAST CONTENT PROVIDED' },
+        ],
       },
     ],
     maxTokens: 1500,

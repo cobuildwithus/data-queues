@@ -56,7 +56,7 @@ export const storeJobId = async (
 export const fetchEmbeddingSummaries = async (
   redisClient: RedisClientType,
   urls?: string[]
-): Promise<{ type: 'image' | 'video' | null; summaries: string[] }> => {
+): Promise<string[]> => {
   const summaries: string[] = [];
   let type: 'image' | 'video' | null = null;
 
@@ -82,7 +82,7 @@ export const fetchEmbeddingSummaries = async (
     }
   }
 
-  return { type, summaries };
+  return summaries;
 };
 
 // Get embeddings from OpenAI
@@ -95,13 +95,13 @@ export const getEmbedding = async (
 ): Promise<{ embedding: number[]; input: string; urlSummaries: string[] }> => {
   let input = text.replace('\n', ' ');
 
-  const { type, summaries } = getUrlSummaries
+  const summaries = getUrlSummaries
     ? await fetchEmbeddingSummaries(redisClient, urls)
-    : { type: null, summaries: [] };
+    : [];
 
   // Add URL context to input text
   if (summaries.length > 0) {
-    input += ` [Contains ${type}: ${summaries.join(', ')}]`;
+    input += ` [Contains attachments: ${summaries.join(', ')}]`;
   }
 
   if (summaries.length > 0) {

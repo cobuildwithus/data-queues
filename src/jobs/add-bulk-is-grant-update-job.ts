@@ -17,17 +17,27 @@ export const handleBulkAddIsGrantUpdateJob = (queue: Queue) => {
         castContent,
         grantDescription,
         parentFlowDescription,
+        urls,
       } = job;
 
-      if (
-        !grantId ||
-        !castHash ||
-        !castContent ||
-        !grantDescription ||
-        !parentFlowDescription
-      ) {
+      const missingFields = [];
+      if (!grantId) missingFields.push('grantId');
+      if (!castHash) missingFields.push('castHash');
+      if (!grantDescription) missingFields.push('grantDescription');
+      if (!parentFlowDescription) missingFields.push('parentFlowDescription');
+
+      if (missingFields.length > 0) {
         reply.status(400).send({
-          error: 'Missing required fields in one or more jobs',
+          error: `Missing required fields in one or more jobs: ${missingFields.join(
+            ', '
+          )}`,
+        });
+        return;
+      }
+
+      if (!castContent && urls.length === 0) {
+        reply.status(400).send({
+          error: 'Either castContent or urls must be provided',
         });
         return;
       }

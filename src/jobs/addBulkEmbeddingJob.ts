@@ -13,9 +13,16 @@ export const handleBulkAddEmbeddingJob = (queue: Queue) => {
     for (const job of jobs) {
       const { type, content, groups, users, tags, externalId } = job;
 
-      if (!type || !content || !externalId) {
+      const missingFields = [];
+      if (!type) missingFields.push('type');
+      if (!content) missingFields.push('content');
+      if (!externalId) missingFields.push('externalId');
+
+      if (missingFields.length > 0) {
         reply.status(400).send({
-          error: 'Missing required fields in one or more jobs',
+          error: `Missing required fields in one or more jobs: ${missingFields.join(
+            ', '
+          )}`,
         });
         return;
       }
