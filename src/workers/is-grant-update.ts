@@ -38,7 +38,7 @@ export const isGrantUpdateWorker = async (
             const updated = await farcasterDb
               .update(farcasterCasts)
               .set({
-                computedTags: sql`array_append(array_remove(computed_tags, ${result.grantId}), ${result.grantId})`,
+                computedTags: sql`array_append(array_remove(array_append(array_remove(computed_tags, ${result.grantId}), ${result.grantId}), 'nouns-flows'), 'nouns-flows')`,
               })
               .where(sql`hash = ${castHashBuffer}`)
               .returning();
