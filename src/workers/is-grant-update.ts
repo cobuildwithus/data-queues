@@ -46,7 +46,15 @@ export const isGrantUpdateWorker = async (
             // get timestamp of updated cast
             const timestamp = updated[0].timestamp;
 
-            if (updated && timestamp) {
+            const currentLastBuilderUpdate = await flowsDb
+              .select({ lastBuilderUpdate: derivedData.lastBuilderUpdate })
+              .from(derivedData)
+              .where(eq(derivedData.grantId, cast.grantId));
+
+            const lastBuilderUpdate =
+              currentLastBuilderUpdate?.[0]?.lastBuilderUpdate || 0;
+
+            if (updated && timestamp && timestamp > lastBuilderUpdate) {
               await flowsDb
                 .update(derivedData)
                 .set({
