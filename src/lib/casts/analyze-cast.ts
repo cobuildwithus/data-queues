@@ -12,7 +12,7 @@ const anthropic = createAnthropic({
   apiKey: `${process.env.ANTHROPIC_API_KEY}`,
 });
 
-const CAST_ANALYSIS_CACHE_PREFIX = 'ai-cast-analysis-v0:';
+const CAST_ANALYSIS_CACHE_PREFIX = 'ai-cast-analysis-v1:';
 
 interface CastAnalysis {
   grantId?: string;
