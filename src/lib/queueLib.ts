@@ -4,8 +4,9 @@ import { db } from '../database/db';
 import { embeddings } from '../database/schema';
 import { createHash } from 'crypto';
 import OpenAI from 'openai';
-import { describeImage } from './image/describeImage';
+import { describeImage } from './image/describe-image';
 import { RedisClientType } from 'redis';
+import { describeVideo } from './image/describe-video';
 
 const version = 21;
 export const contentHashPrefix = `v${version}-content:`;
@@ -76,6 +77,14 @@ export const fetchEmbeddingSummaries = async (
         const summary = await describeImage(url, redisClient);
         // Only add non-empty summaries that aren't just empty quotes
         if (summary && summary.trim() !== '""' && summary.trim() !== '') {
+          summaries.push(summary);
+        }
+      }
+
+      if (type === 'video') {
+        const summary = await describeVideo(url, redisClient);
+        console.log({ summary });
+        if (summary) {
           summaries.push(summary);
         }
       }

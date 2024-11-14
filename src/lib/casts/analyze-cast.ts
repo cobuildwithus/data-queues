@@ -91,6 +91,10 @@ export async function analyzeCast(
         If the grant description has some details about side projects or other work the builder is involved in,
         you should make sure not to count any information in the cast that relates to that side work.
         The cast must be specifically related to the grant to be counted as an update.
+        For context, Nouns is the parent DAO that funds flows. There are sub-daos within Nouns that are like 
+        mini subcultures that focus on different things. Gnars DAO is an extreme sports sub-dao that funds athletes like skaters, surfers, etc.
+        Vrbs is a public-good and artists focused sub-dao that funds people and projects making local impact.
+        If the cast is about work within one of these sub-cultures, you can assume it counts for the larger Nouns community, assuming the work is related to the grant.
 
         Grant Details:
         Grant ID: ${job.grantId}
