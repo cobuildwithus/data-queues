@@ -2,8 +2,9 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { IsGrantUpdateJobBody } from '../../types/job';
-import { fetchEmbeddingSummaries } from '../queueLib';
+import { fetchEmbeddingSummaries, log } from '../queueLib';
 import { RedisClientType } from 'redis';
+import { Job } from 'bullmq';
 
 const anthropic = createAnthropic({
   apiKey: `${process.env.ANTHROPIC_API_KEY}`,
@@ -44,24 +45,25 @@ async function cacheCastAnalysis(
 
 export async function analyzeCast(
   redisClient: RedisClientType,
-  job: IsGrantUpdateJobBody
+  data: IsGrantUpdateJobBody,
+  job: Job
 ): Promise<CastAnalysis> {
-  if (!job.castContent && job.urls.length === 0) {
+  if (!data.castContent && data.urls.length === 0) {
     throw new Error('Cast content or urls are required');
   }
 
   // Check cache first
   const cachedAnalysis = await getCachedCastAnalysis(
     redisClient,
-    job.castHash,
-    job.grantId
+    data.castHash,
+    data.grantId
   );
   if (cachedAnalysis) {
-    console.log('Returning cached cast analysis', job.castHash);
+    log('Returning cached cast analysis', job);
     return cachedAnalysis;
   }
 
-  const summaries = await fetchEmbeddingSummaries(redisClient, job.urls);
+  const summaries = await fetchEmbeddingSummaries(redisClient, job, data.urls);
 
   const { object } = await generateObject({
     model: anthropic('claude-3-5-sonnet-20241022'),
@@ -97,9 +99,9 @@ export async function analyzeCast(
         If the cast is about work within one of these sub-cultures, you can assume it counts for the larger Nouns community, assuming the work is related to the grant.
 
         Grant Details:
-        Grant ID: ${job.grantId}
-        Description: ${job.grantDescription}
-        Parent Flow Description: ${job.parentFlowDescription}
+        Grant ID: ${data.grantId}
+        Description: ${data.grantDescription}
+        Parent Flow Description: ${data.parentFlowDescription}
         ${
           summaries.length
             ? `The update contains attachments: ${summaries.join(', ')}`
@@ -109,17 +111,20 @@ export async function analyzeCast(
       {
         role: 'user',
         content: [
-          { type: 'text', text: job.castContent || 'NO CAST CONTENT PROVIDED' },
+          {
+            type: 'text',
+            text: data.castContent || 'NO CAST CONTENT PROVIDED',
+          },
         ],
       },
     ],
     maxTokens: 1500,
   });
 
-  const result: CastAnalysis = { ...object, castHash: job.castHash };
+  const result: CastAnalysis = { ...object, castHash: data.castHash };
 
   // Cache the analysis
-  await cacheCastAnalysis(redisClient, job.castHash, job.grantId, result);
+  await cacheCastAnalysis(redisClient, data.castHash, data.grantId, result);
 
   return result;
 }

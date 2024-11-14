@@ -1,5 +1,7 @@
+import { Job } from 'bullmq';
 import { OpenAI } from 'openai';
 import { RedisClientType } from 'redis';
+import { log } from '../queueLib';
 
 // Initialize the OpenAI client with your API key
 const client = new OpenAI({
@@ -43,7 +45,8 @@ async function cacheImageDescription(
  */
 export async function describeImage(
   imageUrl: string,
-  redisClient: RedisClientType
+  redisClient: RedisClientType,
+  job: Job
 ): Promise<string | null> {
   // return null if imageUrl is a youtube video
   if (nonImageDomains.some((domain) => imageUrl.includes(domain))) {
@@ -96,7 +99,7 @@ export async function describeImage(
 
       // Extract and return the assistant's response
       const description = response.choices[0]?.message?.content;
-      console.log({ description, imageUrl });
+      log(`Image description: ${description}, URL: ${imageUrl}`, job);
 
       // Cache the result if it's not the default message
       if (description) {
@@ -106,7 +109,7 @@ export async function describeImage(
       return description;
     } catch (error: any) {
       if (attempts === maxAttempts) {
-        handleMaxAttemptsError(imageUrl, error);
+        handleMaxAttemptsError(imageUrl, error, job);
         return null;
       }
 
@@ -114,16 +117,16 @@ export async function describeImage(
         attempts++;
         await handleRateLimitError();
       } else {
-        return await handleOtherErrors(error, imageUrl, redisClient);
+        return await handleOtherErrors(error, imageUrl, redisClient, job);
       }
     }
   }
   return null;
 }
 
-function handleMaxAttemptsError(imageUrl: string, error: any) {
-  console.error('Rate limit reached after max retries', imageUrl);
-  console.error(error);
+function handleMaxAttemptsError(imageUrl: string, error: any, job: Job) {
+  log(`Rate limit reached after max retries ${imageUrl}`, job);
+  log(error.toString(), job);
 }
 
 async function handleRateLimitError() {
@@ -133,7 +136,8 @@ async function handleRateLimitError() {
 async function handleOtherErrors(
   error: any,
   imageUrl: string,
-  redisClient: RedisClientType
+  redisClient: RedisClientType,
+  job: Job
 ): Promise<string | null> {
   if (
     error.code === 'invalid_image_url' ||
@@ -141,12 +145,12 @@ async function handleOtherErrors(
   ) {
     if (imageUrl.startsWith('https://imagedelivery.net/')) {
       const newUrl = convertImageDeliveryUrl(imageUrl);
-      return await describeImage(newUrl, redisClient);
+      return await describeImage(newUrl, redisClient, job);
     }
-    console.error(`${error.code}:`, imageUrl);
+    log(`${error.code}: ${imageUrl}`, job);
   } else {
-    console.error('Error describing image');
-    console.error(error, imageUrl);
+    log('Error describing image', job);
+    log(`${error.toString()}, ${imageUrl}`, job);
   }
   return null;
 }

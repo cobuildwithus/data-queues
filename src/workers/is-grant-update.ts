@@ -26,7 +26,7 @@ export const isGrantUpdateWorker = async (
       try {
         const results = [];
         for (const cast of casts) {
-          const result = await analyzeCast(redisClient, cast);
+          const result = await analyzeCast(redisClient, cast, job);
 
           if (result.isGrantUpdate && result.grantId) {
             // Convert the hexadecimal hash string to a Buffer

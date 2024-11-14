@@ -56,6 +56,7 @@ export const storeJobId = async (
 // Get URL summaries from a list of URLs
 export const fetchEmbeddingSummaries = async (
   redisClient: RedisClientType,
+  job: Job,
   urls?: string[]
 ): Promise<string[]> => {
   const summaries: string[] = [];
@@ -74,7 +75,7 @@ export const fetchEmbeddingSummaries = async (
       }
 
       if (type === 'image') {
-        const summary = await describeImage(url, redisClient);
+        const summary = await describeImage(url, redisClient, job);
         // Only add non-empty summaries that aren't just empty quotes
         if (summary && summary.trim() !== '""' && summary.trim() !== '') {
           summaries.push(summary);
@@ -82,7 +83,7 @@ export const fetchEmbeddingSummaries = async (
       }
 
       if (type === 'video') {
-        const summary = await describeVideo(url, redisClient);
+        const summary = await describeVideo(url, redisClient, job);
         console.log({ summary });
         if (summary) {
           summaries.push(summary);
@@ -99,13 +100,14 @@ export const getEmbedding = async (
   redisClient: RedisClientType,
   openai: OpenAI,
   text: string,
+  job: Job,
   urls?: string[],
   getUrlSummaries?: boolean // only if in valid channels
 ): Promise<{ embedding: number[]; input: string; urlSummaries: string[] }> => {
   let input = text.replace('\n', ' ');
 
   const summaries = getUrlSummaries
-    ? await fetchEmbeddingSummaries(redisClient, urls)
+    ? await fetchEmbeddingSummaries(redisClient, job, urls)
     : [];
 
   // Add URL context to input text

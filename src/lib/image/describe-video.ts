@@ -6,6 +6,8 @@ import { RedisClientType } from 'redis';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { Job } from 'bullmq';
+import { log } from '../queueLib';
 
 if (!ffmpegPath) {
   throw new Error('ffmpeg-static is required');
@@ -23,27 +25,29 @@ const fileManager = new GoogleAIFileManager(process.env.GOOGLE_AI_STUDIO_KEY);
 
 async function getCachedVideoDescription(
   redisClient: RedisClientType,
-  videoUrl: string
+  videoUrl: string,
+  job: Job
 ): Promise<string | null> {
-  console.log(`Checking cache for video description: ${videoUrl}`);
+  log(`Checking cache for video description: ${videoUrl}`, job);
   const cached = await redisClient.get(
     `${VIDEO_DESCRIPTION_CACHE_PREFIX}${videoUrl}`
   );
-  console.log(`Cache ${cached ? 'hit' : 'miss'} for video description`);
+  log(`Cache ${cached ? 'hit' : 'miss'} for video description`, job);
   return cached;
 }
 
 async function cacheVideoDescription(
   redisClient: RedisClientType,
   videoUrl: string,
-  description: string
+  description: string,
+  job: Job
 ): Promise<void> {
-  console.log(`Caching video description for: ${videoUrl}`);
+  log(`Caching video description for: ${videoUrl}`, job);
   await redisClient.set(
     `${VIDEO_DESCRIPTION_CACHE_PREFIX}${videoUrl}`,
     description
   );
-  console.log('Video description cached successfully');
+  log('Video description cached successfully', job);
 }
 
 async function getLowestQualityStreamIndices(
@@ -90,14 +94,16 @@ async function getLowestQualityStreamIndices(
 
 async function downloadLowQualityVideo(
   url: string,
-  outputPath: string
+  outputPath: string,
+  job: Job
 ): Promise<void> {
-  console.log(`Downloading video from ${url} to ${outputPath}`);
+  log(`Downloading video from ${url} to ${outputPath}`, job);
 
   // Get the indices of the lowest quality video and audio streams
   const { videoIndex, audioIndex } = await getLowestQualityStreamIndices(url);
-  console.log(
-    `Selected video stream index: ${videoIndex}, audio stream index: ${audioIndex}`
+  log(
+    `Selected video stream index: ${videoIndex}, audio stream index: ${audioIndex}`,
+    job
   );
 
   return new Promise((resolve, reject) => {
@@ -115,16 +121,16 @@ async function downloadLowQualityVideo(
         .outputOptions('-map', `0:${videoIndex}`, '-map', `0:${audioIndex}`)
         .output(outputPath)
         .on('end', () => {
-          console.log('Video download complete');
+          log('Video download complete', job);
           resolve();
         })
         .on('error', (err) => {
-          console.error('Error downloading video:', err);
+          log('Error downloading video:' + err, job);
           reject(err);
         })
         .run();
     } catch (err) {
-      console.error('Unexpected error during video download:', err);
+      log('Unexpected error during video download:' + err, job);
       reject(err);
     }
   });
@@ -132,6 +138,7 @@ async function downloadLowQualityVideo(
 
 async function retryWithExponentialBackoff<T>(
   fn: () => Promise<T>,
+  job: Job,
   retries: number = 3,
   delay: number = 1000
 ): Promise<T> {
@@ -140,9 +147,9 @@ async function retryWithExponentialBackoff<T>(
   } catch (error: any) {
     const status = error?.status;
     if (retries > 0 && (status === 503 || status >= 500)) {
-      console.log(`Retrying after ${delay} ms... (${retries} retries left)`);
+      log(`Retrying after ${delay} ms... (${retries} retries left)`, job);
       await new Promise((resolve) => setTimeout(resolve, delay));
-      return retryWithExponentialBackoff(fn, retries - 1, delay * 2);
+      return retryWithExponentialBackoff(fn, job, retries - 1, delay * 2);
     } else {
       throw error;
     }
@@ -157,16 +164,18 @@ async function retryWithExponentialBackoff<T>(
  */
 export async function describeVideo(
   videoUrl: string,
-  redisClient: RedisClientType
+  redisClient: RedisClientType,
+  job: Job
 ): Promise<string | null> {
-  console.log(`Starting video description process for: ${videoUrl}`);
+  log(`Starting video description process for: ${videoUrl}`, job);
 
   const cachedDescription = await getCachedVideoDescription(
     redisClient,
-    videoUrl
+    videoUrl,
+    job
   );
   if (cachedDescription) {
-    console.log('Returning cached video description');
+    log('Returning cached video description', job);
     return cachedDescription;
   }
 
@@ -181,49 +190,49 @@ export async function describeVideo(
       fs.mkdirSync(videoDir, { recursive: true });
     }
 
-    console.log('Starting video download and processing');
+    log('Starting video download and processing', job);
     // Download video using ffmpeg
-    await downloadLowQualityVideo(videoUrl, localFilePath);
+    await downloadLowQualityVideo(videoUrl, localFilePath, job);
 
     // Upload video file to Google
-    console.log('Uploading video to Google AI Studio');
+    log('Uploading video to Google AI Studio', job);
     const uploadResponse = await fileManager.uploadFile(localFilePath, {
       mimeType: 'video/mp4',
       displayName: 'Video to analyze',
     });
-    console.log('Video uploaded successfully');
+    log('Video uploaded successfully', job);
 
     // Clean up local video file after upload
     if (fs.existsSync(localFilePath)) {
       fs.unlinkSync(localFilePath);
-      console.log('Deleted local video file after upload');
+      log('Deleted local video file after upload', job);
     }
 
     // Check file state until processing is complete
-    console.log('Waiting for video processing to complete');
+    log('Waiting for video processing to complete', job);
     let file = await fileManager.getFile(uploadResponse.file.name);
     const maxRetries = 30; // e.g., wait for up to 5 minutes
     let retries = 0;
 
     while (file.state === 'PROCESSING' && retries < maxRetries) {
-      console.log('Video still processing, waiting 10 seconds...');
+      log('Video still processing, waiting 10 seconds...', job);
       await new Promise((resolve) => setTimeout(resolve, 10000));
       file = await fileManager.getFile(uploadResponse.file.name);
       retries++;
     }
 
     if (file.state === 'FAILED') {
-      console.error('Video processing failed');
+      log('Video processing failed', job);
       throw new Error('Video processing failed');
     } else if (file.state === 'PROCESSING') {
-      console.error('Video processing timed out');
+      log('Video processing timed out', job);
       throw new Error('Video processing timed out');
     }
 
-    console.log('Video processing completed successfully');
+    log('Video processing completed successfully', job);
 
     // Generate description using Gemini Flash with retries
-    console.log('Generating video description with Gemini Flash');
+    log('Generating video description with Gemini Flash', job);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const result = await retryWithExponentialBackoff(async () => {
@@ -238,27 +247,27 @@ export async function describeVideo(
           text: `Please provide a detailed description of this video, focusing on all visible elements, their relationships, and the overall context.`,
         },
       ]);
-    });
+    }, job);
 
     const description = result.response.text();
-    console.log('Generated description:', description);
+    log('Generated description:' + description, job);
 
     // Cache and delete the file after processing
     if (description) {
-      console.log('Caching video description');
-      await cacheVideoDescription(redisClient, videoUrl, description);
+      log('Caching video description', job);
+      await cacheVideoDescription(redisClient, videoUrl, description, job);
     }
-    console.log('Cleaning up Google AI Studio file');
+    log('Cleaning up Google AI Studio file', job);
     await fileManager.deleteFile(uploadResponse.file.name);
 
     return description;
   } catch (error) {
-    console.error('Error describing video:', error);
+    log('Error describing video:' + error, job);
     return null;
   } finally {
     // Clean up local directory and files
     if (fs.existsSync(videoDir)) {
-      console.log('Cleaning up local video directory');
+      log('Cleaning up local video directory', job);
       fs.rmSync(videoDir, { recursive: true, force: true });
     }
   }

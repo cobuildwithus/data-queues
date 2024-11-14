@@ -53,6 +53,7 @@ export const singleEmbeddingWorker = async (
         redisClient,
         openai,
         data.content,
+        job,
         data.urls,
         shouldGetUrlSummaries(data.groups)
       );

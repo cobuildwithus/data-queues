@@ -55,6 +55,7 @@ export const bulkEmbeddingsWorker = async (
           redisClient,
           openai,
           item.content,
+          jobs,
           item.urls,
           shouldGetUrlSummaries(item.groups)
         );
