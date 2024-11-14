@@ -9,7 +9,7 @@ export async function cacheResult<T>(
   key: string,
   prefix: string,
   fetchFn: () => Promise<T>,
-  shouldCache: boolean = process.env.NODE_ENV === 'development'
+  shouldCache: boolean = process.env.NODE_ENV !== 'development'
 ): Promise<T> {
   // Check cache first if caching is enabled
   if (shouldCache) {
@@ -49,7 +49,7 @@ export async function getCachedResult<T>(
   redisClient: RedisClientType,
   key: string,
   prefix: string,
-  shouldCache: boolean = process.env.NODE_ENV === 'development'
+  shouldCache: boolean = process.env.NODE_ENV !== 'development'
 ): Promise<T | null> {
   if (!shouldCache) {
     return null;
