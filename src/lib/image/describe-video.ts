@@ -17,7 +17,7 @@ if (!process.env.GOOGLE_AI_STUDIO_KEY) {
   throw new Error('GOOGLE_AI_STUDIO_KEY environment variable is required');
 }
 
-const VIDEO_DESCRIPTION_CACHE_PREFIX = 'svideo-aisdescription:';
+const VIDEO_DESCRIPTION_CACHE_PREFIX = 'video-ai-description:';
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_STUDIO_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GOOGLE_AI_STUDIO_KEY);
 
