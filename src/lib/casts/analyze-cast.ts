@@ -148,7 +148,19 @@ function getMessageContent(
                 ', '
               )}`
             : 'The update contains no attachments'
-        }`;
+        }
+        **Instructions:**
+        Please output your answer as a *JSON object* that matches the following schema:
+        \`\`\`json
+        {
+          "grantId": string (optional),
+          "isGrantUpdate": boolean,
+          "reason": string,
+          "confidenceScore": number
+        }
+        \`\`\`
+
+        **Do not include any additional text or explanations. Provide only the JSON object as your output.**`;
 
   log(content, job);
 
