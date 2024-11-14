@@ -9,12 +9,20 @@ export async function cacheResult<T>(
   key: string,
   prefix: string,
   fetchFn: () => Promise<T>,
-  shouldCache: boolean = process.env.NODE_ENV !== 'development'
+  shouldCache: boolean = process.env.NODE_ENV === 'development'
 ): Promise<T> {
   // Check cache first if caching is enabled
   if (shouldCache) {
     const cached = await redisClient.get(`${prefix}${key}`);
     if (cached) {
+      // Handle case where cached value is just a string
+      if (
+        typeof cached === 'string' &&
+        cached.charAt(0) !== '{' &&
+        cached.charAt(0) !== '['
+      ) {
+        return cached as unknown as T;
+      }
       return JSON.parse(cached) as T;
     }
   }
@@ -24,7 +32,10 @@ export async function cacheResult<T>(
 
   // Cache result if caching is enabled and result exists
   if (shouldCache && result !== null && result !== undefined) {
-    await redisClient.set(`${prefix}${key}`, JSON.stringify(result));
+    // Handle case where result is just a string
+    const valueToCache =
+      typeof result === 'string' ? result : JSON.stringify(result);
+    await redisClient.set(`${prefix}${key}`, valueToCache);
   }
 
   return result;
@@ -38,7 +49,7 @@ export async function getCachedResult<T>(
   redisClient: RedisClientType,
   key: string,
   prefix: string,
-  shouldCache: boolean = process.env.NODE_ENV !== 'development'
+  shouldCache: boolean = process.env.NODE_ENV === 'development'
 ): Promise<T | null> {
   if (!shouldCache) {
     return null;
@@ -49,5 +60,13 @@ export async function getCachedResult<T>(
     return null;
   }
 
+  // Handle case where cached value is just a string
+  if (
+    typeof cached === 'string' &&
+    cached.charAt(0) !== '{' &&
+    cached.charAt(0) !== '['
+  ) {
+    return cached as unknown as T;
+  }
   return JSON.parse(cached) as T;
 }
