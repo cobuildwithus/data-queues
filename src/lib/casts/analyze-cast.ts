@@ -98,6 +98,8 @@ export async function analyzeCast(
     maxTokens: 1500,
   });
 
+  log(JSON.stringify(object), job);
+
   const result: CastAnalysis = { ...object, castHash: data.castHash };
 
   // Cache the analysis
