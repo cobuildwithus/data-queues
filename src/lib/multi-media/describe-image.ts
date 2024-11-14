@@ -2,6 +2,8 @@ import { Job } from 'bullmq';
 import { OpenAI } from 'openai';
 import { RedisClientType } from 'redis';
 import { log } from '../queueLib';
+import { getCachedResult } from '../cache/cacheResult';
+import { cacheResult } from '../cache/cacheResult';
 
 // Initialize the OpenAI client with your API key
 const client = new OpenAI({
@@ -23,7 +25,11 @@ async function getCachedImageDescription(
   redisClient: RedisClientType,
   imageUrl: string
 ): Promise<string | null> {
-  return await redisClient.get(`${IMAGE_DESCRIPTION_CACHE_PREFIX}${imageUrl}`);
+  return await getCachedResult<string>(
+    redisClient,
+    imageUrl,
+    IMAGE_DESCRIPTION_CACHE_PREFIX
+  );
 }
 
 async function cacheImageDescription(
@@ -31,9 +37,11 @@ async function cacheImageDescription(
   imageUrl: string,
   description: string
 ): Promise<void> {
-  await redisClient.set(
-    `${IMAGE_DESCRIPTION_CACHE_PREFIX}${imageUrl}`,
-    description
+  await cacheResult(
+    redisClient,
+    imageUrl,
+    IMAGE_DESCRIPTION_CACHE_PREFIX,
+    async () => description
   );
 }
 

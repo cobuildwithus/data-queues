@@ -5,6 +5,8 @@ import { IsGrantUpdateJobBody } from '../../types/job';
 import { fetchEmbeddingSummaries, log } from '../queueLib';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
+import { getCachedResult } from '../cache/cacheResult';
+import { cacheResult } from '../cache/cacheResult';
 
 const anthropic = createAnthropic({
   apiKey: `${process.env.ANTHROPIC_API_KEY}`,
@@ -25,10 +27,11 @@ async function getCachedCastAnalysis(
   castHash: string,
   grantId: string
 ): Promise<CastAnalysis | null> {
-  const cached = await redisClient.get(
-    `${CAST_ANALYSIS_CACHE_PREFIX}${castHash}:${grantId}`
+  return await getCachedResult<CastAnalysis>(
+    redisClient,
+    `${castHash}:${grantId}`,
+    CAST_ANALYSIS_CACHE_PREFIX
   );
-  return cached ? JSON.parse(cached) : null;
 }
 
 async function cacheCastAnalysis(
@@ -37,9 +40,11 @@ async function cacheCastAnalysis(
   grantId: string,
   analysis: CastAnalysis
 ): Promise<void> {
-  await redisClient.set(
-    `${CAST_ANALYSIS_CACHE_PREFIX}${castHash}:${grantId}`,
-    JSON.stringify(analysis)
+  await cacheResult(
+    redisClient,
+    `${castHash}:${grantId}`,
+    CAST_ANALYSIS_CACHE_PREFIX,
+    async () => analysis
   );
 }
 
@@ -78,9 +83,41 @@ export async function analyzeCast(
     messages: [
       {
         role: 'system',
-        content: `You are a helpful assistant that analyzes text & images of Farcaster cast to determine if it should be included on the specific Grant page in the "Updates" section. 
-        You will be given a cast and grant details. 
-        You will need to determine if the cast is a status update for the grant. 
+        content: getMessageContent(data, summaries, job),
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: data.castContent || 'NO CAST CONTENT PROVIDED',
+          },
+        ],
+      },
+    ],
+    maxTokens: 1500,
+  });
+
+  const result: CastAnalysis = { ...object, castHash: data.castHash };
+
+  // Cache the analysis
+  await cacheCastAnalysis(redisClient, data.castHash, data.grantId, result);
+
+  return result;
+}
+
+function getMessageContent(
+  data: {
+    castContent?: string;
+    grantId: string;
+    grantDescription: string;
+    parentFlowDescription: string;
+    castHash: string;
+  },
+  summaries: string[],
+  job: Job
+): string {
+  const content = `You will need to determine if the cast is a status update for the grant. 
         If it is, you will need to return the grantId and your confidence score why you think this cast is an update for this specific grant. 
         If the cast is not a grant update - return an empty grantId. 
         If the cast is generic comment about grants program - return an empty grantId. 
@@ -102,29 +139,18 @@ export async function analyzeCast(
         Grant ID: ${data.grantId}
         Description: ${data.grantDescription}
         Parent Flow Description: ${data.parentFlowDescription}
+        Pay special attention to the following attachments posted by the user. 
+        The attachments are either videos or images, and you should use them to determine if the cast is a grant update.
+        They are described below:
         ${
           summaries.length
-            ? `The update contains attachments: ${summaries.join(', ')}`
+            ? `The update contains the following attachments posted by the user: ${summaries.join(
+                ', '
+              )}`
             : 'The update contains no attachments'
-        }`,
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: data.castContent || 'NO CAST CONTENT PROVIDED',
-          },
-        ],
-      },
-    ],
-    maxTokens: 1500,
-  });
+        }`;
 
-  const result: CastAnalysis = { ...object, castHash: data.castHash };
+  log(content, job);
 
-  // Cache the analysis
-  await cacheCastAnalysis(redisClient, data.castHash, data.grantId, result);
-
-  return result;
+  return content;
 }

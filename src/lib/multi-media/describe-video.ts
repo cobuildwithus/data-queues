@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { Job } from 'bullmq';
 import { log } from '../queueLib';
 import { execSync } from 'child_process';
+import { cacheResult, getCachedResult } from '../cache/cacheResult';
 
 // Get paths to ffmpeg and ffprobe
 const ffmpegPath = execSync('which ffmpeg').toString().trim();
@@ -42,11 +43,11 @@ async function getCachedVideoDescription(
   job: Job
 ): Promise<string | null> {
   log(`Checking cache for video description: ${videoUrl}`, job);
-  const cached = await redisClient.get(
-    `${VIDEO_DESCRIPTION_CACHE_PREFIX}${videoUrl}`
+  return await getCachedResult<string>(
+    redisClient,
+    videoUrl,
+    VIDEO_DESCRIPTION_CACHE_PREFIX
   );
-  log(`Cache ${cached ? 'hit' : 'miss'} for video description`, job);
-  return cached;
 }
 
 async function cacheVideoDescription(
@@ -56,9 +57,11 @@ async function cacheVideoDescription(
   job: Job
 ): Promise<void> {
   log(`Caching video description for: ${videoUrl}`, job);
-  await redisClient.set(
-    `${VIDEO_DESCRIPTION_CACHE_PREFIX}${videoUrl}`,
-    description
+  await cacheResult(
+    redisClient,
+    videoUrl,
+    VIDEO_DESCRIPTION_CACHE_PREFIX,
+    async () => description
   );
   log('Video description cached successfully', job);
 }
@@ -257,7 +260,13 @@ export async function describeVideo(
           },
         },
         {
-          text: `Please provide a detailed description of this video, focusing on all visible elements, their relationships, and the overall context.`,
+          text: `Please provide a detailed description of this video, focusing on all visible elements, their relationships, and the overall context. 
+          Be sure to describe the actions that are happening in the video at a high level, especially how they relate to people and how they interact with others in public or in their community. 
+          If there are red square glasses, please describe what the person is doing with them, and you can refer to them as noggles. 
+          If you see any other branding/text make sure to include it, especially if it's about Nouns, Gnars, Vrbs or the nouns symbol ⌐◨-◨.
+          Try to ascertain the locations of the people and places in the video.
+          Make sure to mention what types of activities are happening in the video,
+          or otherwise what type of work is being done.`,
         },
       ]);
     }, job);
