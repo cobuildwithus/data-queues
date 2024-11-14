@@ -4,9 +4,9 @@ import { db } from '../database/db';
 import { embeddings } from '../database/schema';
 import { createHash } from 'crypto';
 import OpenAI from 'openai';
-import { describeImage } from './image/describe-image';
+import { describeImage } from './multi-media/describe-image';
 import { RedisClientType } from 'redis';
-import { describeVideo } from './image/describe-video';
+import { describeVideo } from './multi-media/describe-video';
 
 const version = 21;
 export const contentHashPrefix = `v${version}-content:`;
