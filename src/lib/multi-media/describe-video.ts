@@ -1,5 +1,4 @@
 import ffmpeg from 'fluent-ffmpeg';
-import ffmpegPath from 'ffmpeg-static';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { RedisClientType } from 'redis';
@@ -8,18 +7,32 @@ import path from 'path';
 import crypto from 'crypto';
 import { Job } from 'bullmq';
 import { log } from '../queueLib';
+import { execSync } from 'child_process';
+
+// Get paths to ffmpeg and ffprobe
+const ffmpegPath = execSync('which ffmpeg').toString().trim();
+const ffprobePath = execSync('which ffprobe').toString().trim();
+
+console.log('ffmpeg path:', ffmpegPath);
+console.log('ffprobe path:', ffprobePath);
+
+// Set the paths in fluent-ffmpeg
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 
 if (!ffmpegPath) {
   throw new Error('ffmpeg-static is required');
 }
 
-ffmpeg.setFfmpegPath(ffmpegPath);
+if (!ffprobePath) {
+  throw new Error('ffprobe-static is required');
+}
 
 if (!process.env.GOOGLE_AI_STUDIO_KEY) {
   throw new Error('GOOGLE_AI_STUDIO_KEY environment variable is required');
 }
 
-const VIDEO_DESCRIPTION_CACHE_PREFIX = 'video-ai-description:';
+const VIDEO_DESCRIPTION_CACHE_PREFIX = 'ai-studio-video-description:';
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_STUDIO_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GOOGLE_AI_STUDIO_KEY);
 
