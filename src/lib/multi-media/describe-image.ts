@@ -7,8 +7,10 @@ import { log } from '../queueLib';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
-import { nonImageDomains } from './domains';
+import { imageDomains, imageRegex } from './domains';
 import { imageDescriptionPrompt } from '../prompts/builder-profile';
+
+const fsPromises = fs.promises;
 
 if (!process.env.GOOGLE_AI_STUDIO_KEY) {
   throw new Error('GOOGLE_AI_STUDIO_KEY environment variable is required');
@@ -53,13 +55,40 @@ async function downloadImage(
   job: Job
 ): Promise<void> {
   log(`Downloading image from ${imageUrl} to ${outputPath}`, job);
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to download image: ${response.statusText}`);
+
+  try {
+    const response = await fetch(imageUrl, {
+      headers: {
+        // Add a User-Agent header to mimic a browser request
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+        // Add 'Accept' and 'Referer' headers
+        Accept: '*/*',
+        Referer: imageUrl,
+      },
+    });
+
+    if (!response.ok) {
+      const status = response.status;
+      const statusText = response.statusText;
+      log(
+        `Failed to download image. Status: ${status}, StatusText: ${statusText}`,
+        job
+      );
+      throw new Error(
+        `Failed to download image: ${status} ${statusText}, ${imageUrl}`
+      );
+    }
+
+    const buffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(buffer);
+    await fsPromises.writeFile(outputPath, uint8Array);
+    log('Image downloaded successfully', job);
+  } catch (error: any) {
+    log(`Error in downloadImage: ${error.message}`, job);
+    throw error;
   }
-  const buffer = await response.buffer();
-  fs.writeFileSync(outputPath, new Uint8Array(buffer));
-  log('Image downloaded successfully', job);
 }
 
 async function retryWithExponentialBackoff<T>(
@@ -71,9 +100,15 @@ async function retryWithExponentialBackoff<T>(
   try {
     return await fn();
   } catch (error: any) {
-    const status = error?.status;
-    if (retries > 0 && (status === 503 || status >= 500)) {
-      log(`Retrying after ${delay} ms... (${retries} retries left)`, job);
+    const isNetworkError =
+      error.code === 'ENOTFOUND' || error.code === 'ECONNRESET';
+    const status = error?.status || error?.code || 'Unknown';
+    log(
+      `Error during operation: ${error.message}. Status: ${status}. Retries left: ${retries}`,
+      job
+    );
+    if (retries > 0 && (isNetworkError || status >= 500)) {
+      log(`Retrying after ${delay} ms...`, job);
       await new Promise((resolve) => setTimeout(resolve, delay));
       return retryWithExponentialBackoff(fn, job, retries - 1, delay * 2);
     } else {
@@ -101,27 +136,25 @@ export async function describeImage(
 ): Promise<string | null> {
   log(`Starting image description process for: ${imageUrl}`, job);
 
-  // Check for non-image domains
-  const urlObj = new URL(imageUrl);
-  if (nonImageDomains.some((domain) => urlObj.hostname.endsWith(domain))) {
-    return null;
-  }
-
-  // Check if URL is valid and starts with http:// or https://
-  if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-    return null;
-  }
-
-  // Validate URL format
+  // Validate URL format and check if it's from an allowed image domain
   try {
-    new URL(imageUrl);
-  } catch (e) {
-    return null;
-  }
+    const urlObj = new URL(imageUrl);
+    const isAllowedImageDomain = imageDomains.some((domain) =>
+      urlObj.hostname.endsWith(domain)
+    );
 
-  // Convert imagedelivery URL before attempting to process
-  if (imageUrl.startsWith('https://imagedelivery.net/BXluQx4ige9GuW0Ia56BHw')) {
-    imageUrl = convertImageDeliveryUrl(imageUrl);
+    if (!isAllowedImageDomain) {
+      // log(`Skipping image from non-allowed domain: ${urlObj.hostname}`, job);
+      return null;
+    }
+
+    // Convert imagedelivery URL before attempting to process
+    if (imageRegex.test(imageUrl)) {
+      imageUrl = convertImageDeliveryUrl(imageUrl);
+    }
+  } catch (e) {
+    log(`Skipping invalid URL: ${imageUrl}`, job);
+    return null;
   }
 
   const cachedDescription = await getCachedImageDescription(
@@ -161,7 +194,7 @@ export async function describeImage(
 
     // Clean up local image file after upload
     if (fs.existsSync(localFilePath)) {
-      fs.unlinkSync(localFilePath);
+      await fsPromises.unlink(localFilePath);
       log('Deleted local image file after upload', job);
     }
 
@@ -206,7 +239,7 @@ export async function describeImage(
       ]);
     }, job);
 
-    log(`Result from generateContent: ${JSON.stringify(result, null, 2)}`, job);
+    // log(`Result from generateContent: ${JSON.stringify(result, null, 2)}`, job);
 
     const description = result.response.text();
     log('Generated description:' + description, job);
@@ -226,8 +259,8 @@ export async function describeImage(
   } finally {
     // Clean up local directory and files
     if (fs.existsSync(imageDir)) {
-      log('Cleaning up local image directory', job);
-      fs.rmSync(imageDir, { recursive: true, force: true });
+      await fsPromises.rm(imageDir, { recursive: true, force: true });
+      log('Cleaned up local image directory', job);
     }
   }
 }
