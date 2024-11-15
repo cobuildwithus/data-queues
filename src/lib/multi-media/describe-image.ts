@@ -53,6 +53,17 @@ export async function describeImage(
   if (imageUrl.includes('.m3u8') || imageUrl.includes('.mp4')) {
     return null;
   }
+  // Check if URL starts with http:// or https://
+  if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    return null;
+  }
+
+  // Validate URL format
+  try {
+    new URL(imageUrl);
+  } catch (e) {
+    return null;
+  }
 
   // Check for non-image domains
   const urlObj = new URL(imageUrl);

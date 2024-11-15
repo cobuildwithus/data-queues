@@ -42,4 +42,5 @@ export const nonImageDomains = [
   'groundsdao.wtf',
   'vrbs.wtf',
   'cupofvrb.com',
+  'discord.gg',
 ];
