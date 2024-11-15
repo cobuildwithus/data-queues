@@ -9,6 +9,9 @@ import { Job } from 'bullmq';
 import { log } from '../queueLib';
 import { execSync } from 'child_process';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
+import { mkdirSync, existsSync } from 'fs';
+import { dirname } from 'path';
+import { videoDescriptionPrompt } from '../prompts/builder-profile';
 
 // Get paths to ffmpeg and ffprobe
 const ffmpegPath = execSync('which ffmpeg').toString().trim();
@@ -118,6 +121,13 @@ async function downloadLowQualityVideo(
 ): Promise<void> {
   log(`Downloading video from ${url} to ${outputPath}`, job);
 
+  // Ensure the output directory exists
+  const outputDir = dirname(outputPath);
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
+    console.log('Output directory created:', outputDir);
+  }
+
   // Get the indices of the lowest quality video and audio streams
   const { videoIndex, audioIndex } = await getLowestQualityStreamIndices(url);
   log(
@@ -208,7 +218,7 @@ export async function describeVideo(
 
   // Create unique directory name based on video URL hash
   const videoHash = crypto.createHash('md5').update(videoUrl).digest('hex');
-  const videoDir = path.join(__dirname, videoHash);
+  const videoDir = path.resolve(__dirname, videoHash);
   const localFilePath = path.join(videoDir, 'video.mp4');
 
   try {
@@ -271,13 +281,7 @@ export async function describeVideo(
           },
         },
         {
-          text: `Please provide a detailed description of this video, focusing on all visible elements, their relationships, and the overall context. 
-          Be sure to describe the actions that are happening in the video at a high level, especially how they relate to people and how they interact with others in public or in their community. 
-          If there are red square glasses, please describe what the person is doing with them, and you can refer to them as noggles. 
-          If you see any other branding/text make sure to include it, especially if it's about Nouns, Gnars, Vrbs or the nouns symbol ⌐◨-◨.
-          Try to ascertain the locations of the people and places in the video.
-          Make sure to mention what types of activities are happening in the video,
-          or otherwise what type of work is being done.`,
+          text: videoDescriptionPrompt(),
         },
       ]);
     }, job);

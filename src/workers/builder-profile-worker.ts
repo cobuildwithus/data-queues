@@ -2,14 +2,8 @@ import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
 import { BuilderProfileJobBody } from '../types/job';
 import { log } from '../lib/queueLib';
 import { RedisClientType } from 'redis';
-import {
-  farcasterCasts,
-  farcasterProfiles,
-} from '../database/farcaster-schema';
-import { farcasterDb } from '../database/farcasterDb';
-import { desc, eq } from 'drizzle-orm';
 import { generateBuilderProfile } from '../lib/builders/analyze-builder';
-import { alias } from 'drizzle-orm/pg-core';
+import { getAllCastsWithParents } from '../database/queries';
 
 export const builderProfileWorker = async (
   queueName: string,
@@ -64,47 +58,3 @@ export const builderProfileWorker = async (
     }
   );
 };
-
-const getAllCastsWithParents = async (fid: number) => {
-  const parentCastsAlias = alias(farcasterCasts, 'parentCasts');
-  const profilesAlias = alias(farcasterProfiles, 'profiles');
-
-  const casts = await farcasterDb
-    .select({
-      id: farcasterCasts.id,
-      createdAt: farcasterCasts.createdAt,
-      updatedAt: farcasterCasts.updatedAt,
-      deletedAt: farcasterCasts.deletedAt,
-      timestamp: farcasterCasts.timestamp,
-      fid: farcasterCasts.fid,
-      hash: farcasterCasts.hash,
-      parentHash: farcasterCasts.parentHash,
-      parentFid: farcasterCasts.parentFid,
-      parentUrl: farcasterCasts.parentUrl,
-      text: farcasterCasts.text,
-      embeds: farcasterCasts.embeds,
-      mentions: farcasterCasts.mentions,
-      mentionsPositions: farcasterCasts.mentionsPositions,
-      rootParentHash: farcasterCasts.rootParentHash,
-      rootParentUrl: farcasterCasts.rootParentUrl,
-      computedTags: farcasterCasts.computedTags,
-      parentCast: {
-        text: parentCastsAlias.text,
-        parentFname: profilesAlias.fname,
-      },
-    })
-    .from(farcasterCasts)
-    .leftJoin(
-      parentCastsAlias,
-      eq(farcasterCasts.parentHash, parentCastsAlias.hash)
-    )
-    .leftJoin(profilesAlias, eq(parentCastsAlias.fid, profilesAlias.fid))
-    .where(eq(farcasterCasts.fid, fid))
-    .orderBy(desc(farcasterCasts.timestamp));
-
-  return casts;
-};
-
-export type CastWithParent = Awaited<
-  ReturnType<typeof getAllCastsWithParents>
->[number];

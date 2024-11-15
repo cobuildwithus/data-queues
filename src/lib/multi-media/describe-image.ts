@@ -4,21 +4,13 @@ import { RedisClientType } from 'redis';
 import { log } from '../queueLib';
 import { getCachedResult } from '../cache/cacheResult';
 import { cacheResult } from '../cache/cacheResult';
+import { nonImageDomains } from './domains';
+import { imageDescriptionPrompt } from '../prompts/builder-profile';
 
 // Initialize the OpenAI client with your API key
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY, // Ensure your API key is stored securely
 });
-
-const nonImageDomains = [
-  'youtube.com',
-  'youtu.be',
-  'vrbs.build',
-  'vimeo.com',
-  'warpcast.com',
-  'zora.co',
-  'mirror.xyz',
-];
 
 const IMAGE_DESCRIPTION_CACHE_PREFIX = 'image-description:';
 
@@ -100,15 +92,7 @@ export async function describeImage(
             content: [
               {
                 type: 'text',
-                text: `Please provide a detailed description of the following image, 
-                  focusing on all visible elements, their relationships, and the overall context. 
-                  Don't include too much data about the image, just the important details that contribute to the overall meaning.
-                  Ensure that you first define what exactly you believe the image is, whether it's a photo, a painting, a drawing, screenshot of a web page etc.
-                  Include information on subjects, actions, settings, emotions, and any inferred meanings to facilitate accurate embedding. 
-                  If you see a person wearing square glasses, especially if they are red, they might be called noggles, so mention the word noggles if it's relevant.
-                  Make sure to pay attention to glasses and these details, but you don't need to mention them in the description if they are not present in the image.
-                  The information you share will be fed to an embedding model, so don't use new lines or other formatting. Make it all lowercase.
-                  DO NOT return anything if you cannot access the image or it is otherwise unavilable. Just return an empty string.`,
+                text: imageDescriptionPrompt(),
               },
               { type: 'image_url', image_url: { url: imageUrl } },
             ],
