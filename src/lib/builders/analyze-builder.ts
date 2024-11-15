@@ -28,16 +28,31 @@ export async function generateBuilderProfile(
   const sortedCasts = filterCasts(casts);
 
   const castsText: string[] = [];
+  const BATCH_SIZE = 250;
 
-  // Generate text representations of casts
-  for (const cast of sortedCasts) {
-    if (!cast.timestamp || (!cast.text && !cast.embeds)) {
-      console.error('Cast timestamp is required', cast);
-      continue;
-    }
+  // Generate text representations of casts in batches
+  for (let i = 0; i < sortedCasts.length; i += BATCH_SIZE) {
+    const batch = sortedCasts.slice(i, i + BATCH_SIZE);
+    log(
+      `Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(
+        sortedCasts.length / BATCH_SIZE
+      )}`,
+      job
+    );
 
-    const castText = await generateCastText(cast, redisClient, job);
-    castsText.push(castText);
+    const batchTexts = await Promise.all(
+      batch.map(async (cast) => {
+        if (!cast.timestamp || (!cast.text && !cast.embeds)) {
+          console.error('Cast timestamp is required', cast);
+          return null;
+        }
+        return generateCastText(cast, redisClient, job);
+      })
+    );
+
+    castsText.push(
+      ...batchTexts.filter((text): text is string => text !== null)
+    );
   }
 
   // Sanitize and filter empty entries

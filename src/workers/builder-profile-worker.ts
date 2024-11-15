@@ -91,8 +91,8 @@ export const builderProfileWorker = async (
     {
       connection,
       concurrency: 5, // Lower concurrency since this involves heavy AI analysis
-      lockDuration: 1200000, // 20 minutes
-      lockRenewTime: 600000, // 10 minutes (half of lockDuration)
+      lockDuration: 3600000, // 60 minutes
+      lockRenewTime: 1800000, // 30 minutes (half of lockDuration)
     }
   );
 };
