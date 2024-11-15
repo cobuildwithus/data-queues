@@ -1,5 +1,4 @@
 import { Job } from 'bullmq';
-import fetch from 'node-fetch';
 import fs from 'fs';
 import { RedisClientType } from 'redis';
 import sharp from 'sharp';
