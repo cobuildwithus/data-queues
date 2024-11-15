@@ -10,7 +10,7 @@ import {
 import { FarcasterCast } from '../database/farcaster-schema';
 import { cacheResult, getCachedResult } from '../lib/cache/cacheResult';
 
-const BUILDER_LOCK_PREFIX = 'builder-profile-lock:';
+const BUILDER_LOCK_PREFIX = 'builder-profile-locked:';
 
 export const builderProfileWorker = async (
   queueName: string,
@@ -100,6 +100,9 @@ export const builderProfileWorker = async (
               externalUrl: `https://warpcast.com/${farcasterProfile.fname}`,
               tags: [],
             });
+
+            log(`Added builder profile to embedding queue`, job);
+            await redisClient.del(lockKey);
           } catch (error) {
             // Clear lock if anything fails
             await redisClient.del(lockKey);
@@ -113,6 +116,8 @@ export const builderProfileWorker = async (
           queueJobName,
           embeddingJobs
         );
+
+        log(`Added ${embeddingJobs.length} embedding jobs to queue`, job);
 
         return {
           jobId: job.id,
