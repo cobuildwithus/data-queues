@@ -84,21 +84,24 @@ async function getLowestQualityStreamIndices(
       const videoStreams = streams.filter((s) => s.codec_type === 'video');
       const audioStreams = streams.filter((s) => s.codec_type === 'audio');
 
-      if (videoStreams.length === 0 || audioStreams.length === 0) {
-        return reject(new Error('No video or audio streams found'));
+      if (videoStreams.length === 0) {
+        return reject(new Error('No video streams found'));
       }
 
-      // Sort video and audio streams by bitrate
+      // Sort video streams by bitrate to get lowest quality
       videoStreams.sort(
         (a, b) => Number(a.bit_rate || 0) - Number(b.bit_rate || 0)
       );
-      audioStreams.sort(
-        (a, b) => Number(a.bit_rate || 0) - Number(b.bit_rate || 0)
-      );
-
-      // Get the indices
       const lowestVideoIndex = videoStreams[0].index;
-      const lowestAudioIndex = audioStreams[0].index;
+
+      // For audio, try to get lowest quality if available, otherwise -1
+      let lowestAudioIndex = -1;
+      if (audioStreams.length > 0) {
+        audioStreams.sort(
+          (a, b) => Number(a.bit_rate || 0) - Number(b.bit_rate || 0)
+        );
+        lowestAudioIndex = audioStreams[0].index;
+      }
 
       resolve({
         videoIndex: lowestVideoIndex,
@@ -129,12 +132,20 @@ async function downloadLowQualityVideo(
           'ffmpeg-static is required but was not found in the system.'
         );
       }
-      ffmpeg(url)
+      const ffmpegCommand = ffmpeg(url)
         .setFfmpegPath(ffmpegPath)
         .addInputOption('-protocol_whitelist', 'http,https,tcp,tls')
-        .outputOptions('-c copy') // Copy streams without re-encoding
-        // Map the selected video and audio streams
-        .outputOptions('-map', `0:${videoIndex}`, '-map', `0:${audioIndex}`)
+        .outputOptions('-c copy'); // Copy streams without re-encoding
+
+      // Map the selected video stream
+      ffmpegCommand.outputOptions('-map', `0:${videoIndex}`);
+
+      // Map the audio stream only if it exists
+      if (audioIndex !== -1) {
+        ffmpegCommand.outputOptions('-map', `0:${audioIndex}`);
+      }
+
+      ffmpegCommand
         .output(outputPath)
         .on('end', () => {
           log('Video download complete', job);

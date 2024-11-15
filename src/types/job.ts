@@ -31,3 +31,7 @@ export interface IsGrantUpdateJobBody {
   grantId: string;
   urls: string[];
 }
+
+export interface BuilderProfileJobBody {
+  fid: string;
+}

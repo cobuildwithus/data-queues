@@ -7,6 +7,7 @@ import {
   setupDeletionQueueProcessor,
   setupBulkQueueProcessor,
   setupIsGrantUpdateQueueProcessor,
+  setupBuilderProfileQueueProcessor,
 } from './queue';
 import 'dotenv/config';
 import { handleAddEmbeddingJob } from './jobs/addEmbeddingJob';
@@ -17,26 +18,31 @@ import {
   deleteEmbeddingSchema,
   bulkAddJobSchema,
   isGrantUpdateSchema,
+  builderProfileSchema,
 } from './lib/schemas';
 import { handleBulkAddEmbeddingJob } from './jobs/addBulkEmbeddingJob';
 import { handleBulkAddIsGrantUpdateJob } from './jobs/add-bulk-is-grant-update-job';
+import { handleBuilderProfileJob } from './jobs/add-builder-profile-job';
 
 const setupQueue = async () => {
   const embeddingsQueue = createQueue('EmbeddingsQueue');
   const deletionQueue = createQueue('DeletionQueue');
   const bulkEmbeddingsQueue = createQueue('BulkEmbeddingsQueue');
   const isGrantUpdateQueue = createQueue('IsGrantUpdateQueue');
+  const builderProfileQueue = createQueue('BuilderProfileQueue');
 
   await setupQueueProcessor(embeddingsQueue.name);
   await setupDeletionQueueProcessor(deletionQueue.name);
   await setupBulkQueueProcessor(bulkEmbeddingsQueue.name);
   await setupIsGrantUpdateQueueProcessor(isGrantUpdateQueue.name);
+  await setupBuilderProfileQueueProcessor(builderProfileQueue.name);
 
   return {
     embeddingsQueue,
     deletionQueue,
     bulkEmbeddingsQueue,
     isGrantUpdateQueue,
+    builderProfileQueue,
   };
 };
 
@@ -45,6 +51,7 @@ const setupServer = (queues: {
   deletionQueue: Queue;
   bulkEmbeddingsQueue: Queue;
   isGrantUpdateQueue: Queue;
+  builderProfileQueue: Queue;
 }) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();
@@ -54,6 +61,7 @@ const setupServer = (queues: {
     queues.deletionQueue,
     queues.bulkEmbeddingsQueue,
     queues.isGrantUpdateQueue,
+    queues.builderProfileQueue,
   ]);
 
   server.post(
@@ -90,6 +98,15 @@ const setupServer = (queues: {
       schema: isGrantUpdateSchema,
     },
     handleBulkAddIsGrantUpdateJob(queues.isGrantUpdateQueue)
+  );
+
+  server.post(
+    '/bulk-add-builder-profile',
+    {
+      preHandler: validateApiKey,
+      schema: builderProfileSchema,
+    },
+    handleBuilderProfileJob(queues.builderProfileQueue)
   );
 
   server.setErrorHandler(handleError);

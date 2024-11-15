@@ -11,12 +11,13 @@ const client = new OpenAI({
 });
 
 const nonImageDomains = [
-  'youtube',
-  'm3u8',
-  'mp4',
-  'vrbs.build',
+  'youtube.com',
   'youtu.be',
-  'vimeo',
+  'vrbs.build',
+  'vimeo.com',
+  'warpcast.com',
+  'zora.co',
+  'mirror.xyz',
 ];
 
 const IMAGE_DESCRIPTION_CACHE_PREFIX = 'image-description:';
@@ -56,8 +57,14 @@ export async function describeImage(
   redisClient: RedisClientType,
   job: Job
 ): Promise<string | null> {
-  // return null if imageUrl is a youtube video
-  if (nonImageDomains.some((domain) => imageUrl.includes(domain))) {
+  // Check for video file extensions
+  if (imageUrl.includes('.m3u8') || imageUrl.includes('.mp4')) {
+    return null;
+  }
+
+  // Check for non-image domains
+  const urlObj = new URL(imageUrl);
+  if (nonImageDomains.some((domain) => urlObj.hostname.endsWith(domain))) {
     return null;
   }
 
@@ -72,6 +79,10 @@ export async function describeImage(
     imageUrl
   );
   if (cachedDescription) {
+    log(
+      `Returning cached image description: ${cachedDescription}, URL: ${imageUrl}`,
+      job
+    );
     return cachedDescription;
   }
 

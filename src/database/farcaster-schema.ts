@@ -13,7 +13,7 @@ export const channelMembers = productionSchema.table('channel_members', {
   channelId: text('channel_id'),
 });
 
-export const farcasterProfiles = productionSchema.table('farcaster_profiles', {
+export const farcasterProfiles = productionSchema.table('farcaster_profile', {
   fname: text('fname'),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
@@ -42,3 +42,5 @@ export const farcasterCasts = productionSchema.table('farcaster_casts', {
   rootParentUrl: text('root_parent_url'),
   computedTags: text('computed_tags').array(),
 });
+
+export type FarcasterCast = typeof farcasterCasts.$inferSelect;

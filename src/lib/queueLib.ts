@@ -84,7 +84,6 @@ export const fetchEmbeddingSummaries = async (
 
       if (type === 'video') {
         const summary = await describeVideo(url, redisClient, job);
-        console.log({ summary });
         if (summary) {
           summaries.push(summary);
         }

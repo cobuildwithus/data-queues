@@ -128,3 +128,23 @@ export const isGrantUpdateSchema = {
     },
   },
 };
+
+export const builderProfileSchema = {
+  body: {
+    type: 'object',
+    required: ['jobs'],
+    properties: {
+      jobs: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['fid'],
+          properties: {
+            fid: { type: 'string' },
+          },
+        },
+        minItems: 1,
+      },
+    },
+  },
+};

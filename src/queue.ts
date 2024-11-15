@@ -1,11 +1,11 @@
 import { ConnectionOptions, Queue } from 'bullmq';
-import { JobBody } from './types/job';
 import { createClient, RedisClientType } from 'redis';
 import OpenAI from 'openai';
 import { deletionQueueWorker } from './workers/delete-embed';
 import { bulkEmbeddingsWorker } from './workers/bulk-embeddings';
 import { singleEmbeddingWorker } from './workers/single-embedding';
 import { isGrantUpdateWorker } from './workers/is-grant-update';
+import { builderProfileWorker } from './workers/builder-profile-worker';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY environment variable is required');
@@ -73,4 +73,10 @@ export const setupIsGrantUpdateQueueProcessor = async (queueName: string) => {
   await ensureRedisConnected();
 
   isGrantUpdateWorker(queueName, connection, redisClient as RedisClientType);
+};
+
+export const setupBuilderProfileQueueProcessor = async (queueName: string) => {
+  await ensureRedisConnected();
+
+  builderProfileWorker(queueName, connection, redisClient as RedisClientType);
 };
