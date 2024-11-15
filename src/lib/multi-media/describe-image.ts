@@ -96,7 +96,7 @@ export async function describeImage(
     try {
       // Create a chat completion request with the image URL
       const response = await client.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'user',
