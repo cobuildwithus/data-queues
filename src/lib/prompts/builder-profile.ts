@@ -12,6 +12,7 @@ Collaboration Network:
 - Partnerships
 - Mentorship relationships
 - Community connections
+- What farcaster usernames they talk with the most
 
 Funding & Resources:
 - Grants received/given
@@ -23,8 +24,6 @@ Timeline and activity:
 - When they started building
 - When they joined Nouns or a related community
 - When they posted most of their updates or if they are consistenly active
-
-
 
 Problem-Solution Patterns:
 - Common problems addressed
@@ -48,8 +47,8 @@ Key Technologies/Protocols:
 - Production methods
 - Distribution systems
 
-Communication Style:
-- Update frequency
+Communication:
+- Update / post frequency
 - Documentation approach
 - Engagement patterns
 - Voice and tone

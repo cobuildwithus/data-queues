@@ -49,14 +49,23 @@ export async function generateCastText(
     );
   }
 
+  const contentText = cast.text ? `CONTENT: ${cast.text}` : '';
+
+  const parentAuthor = cast.parentCast?.fname
+    ? `AUTHOR: ${cast.parentCast.fname}`
+    : '';
+  const parentContent = cast.parentCast?.text
+    ? `CONTENT: ${cast.parentCast.text}`
+    : '';
+
   return `TIMESTAMP: ${new Date(cast.timestamp).toISOString()}
-CONTENT: ${cast.text}
+${contentText}
 ${embedSummaries.length ? `ATTACHMENTS: ${embedSummaries.join(' | ')}` : ''}
 ${
   cast.parentCast?.text
     ? `PARENT_CAST: {
-  AUTHOR: ${cast.parentCast.fname}
-  CONTENT: ${cast.parentCast.text}
+  ${parentAuthor}
+  ${parentContent}
   ${
     parentEmbedSummaries.length
       ? `ATTACHMENTS: ${parentEmbedSummaries.join(' | ')}`
