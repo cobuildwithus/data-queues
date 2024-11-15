@@ -1,7 +1,8 @@
 import { Job } from 'bullmq';
+import fetch from 'node-fetch';
 import fs from 'fs';
-import path from 'path';
 import { RedisClientType } from 'redis';
+import sharp from 'sharp';
 import { log } from '../queueLib';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -48,12 +49,34 @@ async function cacheImageDescription(
   log('Image description cached successfully', job);
 }
 
-async function downloadImage(
+async function getImageSize(imageUrl: string, job: Job): Promise<number> {
+  try {
+    const response = await fetch(imageUrl, {
+      method: 'HEAD',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get image size: ${response.statusText}`);
+    }
+
+    const contentLength = response.headers.get('Content-Length');
+    return contentLength ? parseInt(contentLength, 10) : -1;
+  } catch (error: any) {
+    log(`Error getting image size: ${error.message}`, job);
+    return -1;
+  }
+}
+
+async function downloadImageToBuffer(
   imageUrl: string,
-  outputPath: string,
   job: Job
-): Promise<void> {
-  log(`Downloading image from ${imageUrl} to ${outputPath}`, job);
+): Promise<Buffer> {
+  log(`Downloading image from ${imageUrl}`, job);
 
   try {
     const response = await fetch(imageUrl, {
@@ -80,10 +103,10 @@ async function downloadImage(
       );
     }
 
-    const buffer = await response.arrayBuffer();
-    const uint8Array = new Uint8Array(buffer);
-    await fsPromises.writeFile(outputPath, uint8Array);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     log('Image downloaded successfully', job);
+    return buffer;
   } catch (error: any) {
     log(`Error in downloadImage: ${error.message}`, job);
     throw error;
@@ -99,14 +122,21 @@ async function retryWithExponentialBackoff<T>(
   try {
     return await fn();
   } catch (error: any) {
-    const isNetworkError =
-      error.code === 'ENOTFOUND' || error.code === 'ECONNRESET';
+    const transientErrorCodes = [
+      'ENOTFOUND',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'EAI_AGAIN',
+      // Add other transient error codes as needed
+    ];
+    const isTransientError =
+      transientErrorCodes.includes(error.code) || error.status >= 500;
     const status = error?.status || error?.code || 'Unknown';
     log(
       `Error during operation: ${error.message}. Status: ${status}. Retries left: ${retries}`,
       job
     );
-    if (retries > 0 && (isNetworkError || status >= 500)) {
+    if (retries > 0 && isTransientError) {
       log(`Retrying after ${delay} ms...`, job);
       await new Promise((resolve) => setTimeout(resolve, delay));
       return retryWithExponentialBackoff(fn, job, retries - 1, delay * 2);
@@ -136,8 +166,9 @@ export async function describeImage(
   // Validate URL format and check if it's from an allowed image domain
   try {
     const urlObj = new URL(imageUrl);
-    const isAllowedImageDomain = imageDomains.some((domain) =>
-      urlObj.hostname.endsWith(domain)
+    const isAllowedImageDomain = [...imageDomains].some(
+      (domain) =>
+        urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
     );
 
     if (!isAllowedImageDomain) {
@@ -166,36 +197,58 @@ export async function describeImage(
     return cachedDescription;
   }
 
-  const imageDir = path.resolve(__dirname, 'images');
-  const imageName = path.basename(imageUrl);
-  const localFilePath = path.join(imageDir, imageName);
+  const tempFilePath = `/tmp/image-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}.tmp`;
 
   try {
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(imageDir)) {
-      fs.mkdirSync(imageDir, { recursive: true });
+    // Check image size before downloading
+    const imageSize = await getImageSize(imageUrl, job);
+    const maxSizeInBytes = 25 * 1024 * 1024; // 25 MB limit
+    if (imageSize > maxSizeInBytes) {
+      log(`Image size ${imageSize} exceeds maximum allowed size`, job);
+      return null;
     }
 
     log('Starting image download and processing', job);
-    // Download image
-    await downloadImage(imageUrl, localFilePath, job);
 
-    // Determine mime type based on file extension
-    const mimeType = 'image/' + path.extname(localFilePath).substring(1);
+    // Download image to buffer with retry logic
+    const imageBuffer = await retryWithExponentialBackoff(
+      async () => {
+        return await downloadImageToBuffer(imageUrl, job);
+      },
+      job,
+      3,
+      1000
+    );
 
-    // Upload image file to Google
+    // Resize image using sharp
+    const resizedImageBuffer = await sharp(imageBuffer)
+      .resize({ width: 800 }) // Adjust width as needed
+      .toBuffer();
+
+    // Determine MIME type
+    const image = sharp(resizedImageBuffer);
+    const metadata = await image.metadata();
+    const mimeType = `image/${metadata.format}`;
+
+    // Write buffer to temp file
+
+    await fsPromises.writeFile(
+      tempFilePath,
+      new Uint8Array(resizedImageBuffer)
+    );
+
+    // Upload temp file to Google
     log('Uploading image to Google AI Studio', job);
-    const uploadResponse = await fileManager.uploadFile(localFilePath, {
-      mimeType: mimeType, // Adjust based on your image type
+    const uploadResponse = await fileManager.uploadFile(tempFilePath, {
+      mimeType: mimeType,
       displayName: 'Image to analyze',
     });
     log('Image uploaded successfully', job);
 
-    // Clean up local image file after upload
-    if (fs.existsSync(localFilePath)) {
-      await fsPromises.unlink(localFilePath);
-      log('Deleted local image file after upload', job);
-    }
+    // Clean up temp file
+    await fsPromises.unlink(tempFilePath);
 
     // Check file state until processing is complete
     log('Waiting for image processing to complete', job);
@@ -241,7 +294,7 @@ export async function describeImage(
     // log(`Result from generateContent: ${JSON.stringify(result, null, 2)}`, job);
 
     const description = result.response.text();
-    log('Generated description:' + description, job);
+    log('Generated description: ' + description, job);
 
     // Cache and delete the file after processing
     if (description) {
@@ -252,14 +305,14 @@ export async function describeImage(
     await fileManager.deleteFile(uploadResponse.file.name);
 
     return description;
-  } catch (error) {
-    log('Error describing image:' + error, job);
-    return null;
-  } finally {
-    // Clean up local directory and files
-    if (fs.existsSync(imageDir)) {
-      await fsPromises.rm(imageDir, { recursive: true, force: true });
-      log('Cleaned up local image directory', job);
+  } catch (error: any) {
+    try {
+      await fsPromises.unlink(tempFilePath);
+    } catch (unlinkError: any) {
+      log(`Error deleting temp file: ${unlinkError.message}`, job);
     }
+    log(`Error describing image: ${error.message}`, job);
+    log(error.stack, job);
+    return null;
   }
 }
