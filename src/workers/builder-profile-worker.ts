@@ -8,6 +8,9 @@ import {
   getFarcasterProfile,
 } from '../database/queries';
 import { FarcasterCast } from '../database/farcaster-schema';
+import { cacheResult, getCachedResult } from '../lib/cache/cacheResult';
+
+const BUILDER_LOCK_PREFIX = 'builder-profile-lock:';
 
 export const builderProfileWorker = async (
   queueName: string,
@@ -28,47 +31,80 @@ export const builderProfileWorker = async (
       try {
         const results = [];
         for (const profile of builderProfiles) {
-          const casts = await getAllCastsWithParents(Number(profile.fid));
-          const farcasterProfile = await getFarcasterProfile(
-            Number(profile.fid)
+          // Check if this builder is already being processed
+          const lockKey = `${BUILDER_LOCK_PREFIX}${profile.fid}`;
+          const existingLock = await getCachedResult<string>(
+            redisClient,
+            lockKey,
+            ''
           );
 
-          if (!farcasterProfile) {
-            throw new Error(
-              `Farcaster profile not found for FID: ${profile.fid}`
+          if (existingLock) {
+            log(
+              `Builder ${profile.fid} is already being processed, skipping`,
+              job
             );
+            continue;
           }
 
-          log(`Analyzing ${casts.length} casts for FID: ${profile.fid}`, job);
+          try {
+            // Set lock before processing
+            await cacheResult(
+              redisClient,
+              lockKey,
+              '',
+              async () => 'locked',
+              true
+            );
 
-          // Generate builder profile analysis
-          const analysis = await generateBuilderProfile(
-            casts,
-            redisClient,
-            job
-          );
+            const casts = await getAllCastsWithParents(Number(profile.fid));
+            const farcasterProfile = await getFarcasterProfile(
+              Number(profile.fid)
+            );
 
-          console.log({ analysis });
+            if (!farcasterProfile) {
+              // Clear lock if profile not found
+              await redisClient.del(lockKey);
+              throw new Error(
+                `Farcaster profile not found for FID: ${profile.fid}`
+              );
+            }
 
-          log(`Generated builder profile for FID: ${profile.fid}`, job);
+            log(`Analyzing ${casts.length} casts for FID: ${profile.fid}`, job);
 
-          results.push({
-            fid: profile.fid,
-            analysis,
-          });
+            // Generate builder profile analysis
+            const analysis = await generateBuilderProfile(
+              casts,
+              redisClient,
+              job
+            );
 
-          const groups = getUniqueRootParentUrls(casts);
+            console.log({ analysis });
 
-          embeddingJobs.push({
-            type: 'builder-profile',
-            content: cleanTextForEmbedding(analysis),
-            rawContent: analysis,
-            externalId: profile.fid.toString(),
-            groups,
-            users: [profile.fid.toString()],
-            externalUrl: `https://warpcast.com/${farcasterProfile.fname}`,
-            tags: [],
-          });
+            log(`Generated builder profile for FID: ${profile.fid}`, job);
+
+            results.push({
+              fid: profile.fid,
+              analysis,
+            });
+
+            const groups = getUniqueRootParentUrls(casts);
+
+            embeddingJobs.push({
+              type: 'builder-profile',
+              content: cleanTextForEmbedding(analysis),
+              rawContent: analysis,
+              externalId: profile.fid.toString(),
+              groups,
+              users: [profile.fid.toString()],
+              externalUrl: `https://warpcast.com/${farcasterProfile.fname}`,
+              tags: [],
+            });
+          } catch (error) {
+            // Clear lock if anything fails
+            await redisClient.del(lockKey);
+            throw error;
+          }
         }
 
         const queueJobName = `embed-builder-profile-${Date.now()}`;
