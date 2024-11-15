@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { describeImage } from './multi-media/describe-image';
 import { RedisClientType } from 'redis';
 import { describeVideo } from './multi-media/describe-video';
+import { safeTrim } from './builders/utils';
 
 const version = 21;
 export const contentHashPrefix = `v${version}-content:`;
@@ -77,7 +78,7 @@ export const fetchEmbeddingSummaries = async (
       if (type === 'image') {
         const summary = await describeImage(url, redisClient, job);
         // Only add non-empty summaries that aren't just empty quotes
-        if (summary && summary.trim() !== '""' && summary.trim() !== '') {
+        if (summary && safeTrim(summary) !== '""' && safeTrim(summary) !== '') {
           summaries.push(summary);
         }
       }

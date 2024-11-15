@@ -9,6 +9,7 @@ import {
 } from '../database/queries';
 import { FarcasterCast } from '../database/farcaster-schema';
 import { cacheResult, getCachedResult } from '../lib/cache/cacheResult';
+import { safeTrim } from '../lib/builders/utils';
 
 const BUILDER_LOCK_PREFIX = 'builder-profile-locked:';
 
@@ -148,7 +149,10 @@ const getUniqueRootParentUrls = (casts: FarcasterCast[]): string[] => {
         .map((cast) => cast.rootParentUrl)
         .filter(
           (url): url is string =>
-            url !== undefined && url !== null && url.trim() !== ''
+            url !== undefined &&
+            url !== null &&
+            safeTrim(url) !== '' &&
+            safeTrim(url) !== '""'
         )
     )
   );

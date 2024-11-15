@@ -76,3 +76,13 @@ ${
 }
 ---`;
 }
+
+export function safeTrim(text: string) {
+  if (typeof text === 'string') {
+    return text.trim();
+  } else {
+    throw new Error(
+      `Text ${JSON.stringify(text)} is not a string that can be trimmed`
+    );
+  }
+}
