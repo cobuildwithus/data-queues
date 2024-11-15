@@ -25,8 +25,8 @@ export const bulkEmbeddingsWorker = async (
         throw new Error('Job ID is required');
       }
 
-      const results = [];
       const data = jobs.data;
+      const results = [];
 
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
