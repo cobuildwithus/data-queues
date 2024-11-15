@@ -286,6 +286,8 @@ export async function describeVideo(
       ]);
     }, job);
 
+    log(`Result from generateContent: ${JSON.stringify(result, null, 2)}`, job);
+
     const description = result.response.text();
     log('Generated description:' + description, job);
 
