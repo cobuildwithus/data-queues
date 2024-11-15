@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { farcasterCasts, farcasterProfiles } from './farcaster-schema';
 import { farcasterDb } from './farcasterDb';
 import { alias } from 'drizzle-orm/pg-core';
@@ -51,7 +51,7 @@ export const getAllCastsWithParents = async (fid: number) => {
     //     )}`
     //   )
     // )
-    .orderBy(desc(farcasterCasts.timestamp));
+    .orderBy(asc(farcasterCasts.timestamp));
 
   return casts;
 };

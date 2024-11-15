@@ -19,6 +19,13 @@ Funding & Resources:
 - Communities leveraged
 - Resource patterns
 
+Timeline and activity:
+- When they started building
+- When they joined Nouns or a related community
+- When they posted most of their updates or if they are consistenly active
+
+
+
 Problem-Solution Patterns:
 - Common problems addressed
 - Solution approaches
@@ -46,6 +53,10 @@ Communication Style:
 - Documentation approach
 - Engagement patterns
 - Voice and tone
+- What kind of updates they prefer to share
+- How they like to be communicated with
+- How they typically respond to questions
+- How they typically communicate with others, including tone, style, and other details
 
 Growth Trajectory:
 - Skills development

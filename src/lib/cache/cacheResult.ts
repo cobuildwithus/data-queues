@@ -1,7 +1,7 @@
 import { RedisClientType } from 'redis';
 
 // const CACHE_ENABLED = process.env.NODE_ENV !== 'development';
-const CACHE_ENABLED = true;
+const CACHE_ENABLED = false;
 
 /**
  * Generic cache function that stores results in Redis.
@@ -55,5 +55,13 @@ export async function getCachedResult<T>(
   ) {
     return cached as unknown as T;
   }
-  return JSON.parse(cached) as T;
+
+  const parsed = JSON.parse(cached);
+  if (
+    !parsed ||
+    (typeof parsed === 'object' && Object.keys(parsed).length === 0)
+  ) {
+    throw new Error('Cached value is empty or invalid');
+  }
+  return parsed as T;
 }

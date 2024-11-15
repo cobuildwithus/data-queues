@@ -6,6 +6,8 @@ import { Job } from 'bullmq';
 import { CastWithParent } from '../../database/queries';
 import { getAndSaveEmbedSummaries } from '../multi-media/get-and-save-summaries';
 import { builderProfilePrompt } from '../prompts/builder-profile';
+import { cacheResult, getCachedResult } from '../cache/cacheResult';
+import crypto from 'crypto';
 
 const anthropic = createAnthropic({
   apiKey: `${process.env.ANTHROPIC_API_KEY}`,
@@ -13,6 +15,8 @@ const anthropic = createAnthropic({
 
 const BATCH_SIZE = 250; // Process 250 casts at a time
 const MAX_CHUNK_SIZE = 250000; // Maximum characters per chunk
+
+const BUILDER_CACHE_KEY = 'builder-profile-chunk:';
 
 export async function generateBuilderProfile(
   casts: CastWithParent[],
@@ -103,21 +107,43 @@ ${
       const chunk = chunks[i].join('\n');
       log(`Analyzing chunk ${i + 1} of ${chunks.length}`, job);
 
+      const chunkHash = crypto.createHash('sha256').update(chunk).digest('hex');
+
+      const existingAnalysis = await getCachedResult<string>(
+        redisClient,
+        chunkHash,
+        BUILDER_CACHE_KEY
+      );
+
+      if (existingAnalysis) {
+        log(`Found cached analysis for chunk ${i + 1}`, job);
+      }
+
       // Generate analysis for the chunk
-      const { text: analysis } = await generateText({
-        model: anthropic('claude-3-sonnet-20240229'),
-        messages: [
-          {
-            role: 'system',
-            content: builderProfilePrompt(),
-          },
-          {
-            role: 'user',
-            content: `Here are the posts:\n\n${chunk}`,
-          },
-        ],
-        maxTokens: 4096,
-      });
+      const analysis =
+        existingAnalysis ||
+        (await cacheResult<string>(
+          redisClient,
+          chunkHash,
+          BUILDER_CACHE_KEY,
+          async () => {
+            const { text } = await generateText({
+              model: anthropic('claude-3-sonnet-20240229'),
+              messages: [
+                {
+                  role: 'system',
+                  content: builderProfilePrompt(),
+                },
+                {
+                  role: 'user',
+                  content: `Here are the posts:\n\n${chunk}`,
+                },
+              ],
+              maxTokens: 4096,
+            });
+            return text;
+          }
+        ));
 
       partialAnalyses.push(analysis);
     }
@@ -133,6 +159,7 @@ ${
           role: 'system',
           content: `Combine and summarize the following analyses into a single comprehensive builder profile. The final profile should be organized into the sections specified earlier.
 The chunks are ordered chronologically, so make sure to keep that in mind when summarizing.
+Do not include any other text than the final summary.
 ${builderProfilePrompt()}`,
         },
         {
@@ -147,7 +174,6 @@ ${builderProfilePrompt()}`,
   } else {
     // If combined text is within size limit, proceed as usual
     log(`Analyzing full text`, job);
-
     const { text } = await generateText({
       model: anthropic('claude-3-sonnet-20240229'),
       messages: [
