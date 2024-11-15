@@ -91,4 +91,10 @@ export const nonImageDomains = [
   'farview.id',
   'altumbase.com',
   'rounds.wtf',
+  'nouns-encoders.vercel.app',
+  'pronouns.gg',
+  'x.com',
+  'frame.weponder.io',
+  'app.splits.org',
+  'nouns.camp',
 ];
