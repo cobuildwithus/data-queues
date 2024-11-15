@@ -56,4 +56,6 @@ export const nonImageDomains = [
   'degen.tips',
   'nouns.build',
   'give.party',
+  'paragraph.xyz',
+  'alpha.tavern.fm',
 ];

@@ -28,7 +28,7 @@ export async function generateBuilderProfile(
   const sortedCasts = filterCasts(casts);
 
   const castsText: string[] = [];
-  const BATCH_SIZE = 250;
+  const BATCH_SIZE = 350;
 
   // Generate text representations of casts in batches
   for (let i = 0; i < sortedCasts.length; i += BATCH_SIZE) {
