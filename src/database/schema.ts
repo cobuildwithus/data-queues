@@ -24,4 +24,5 @@ export const embeddings = pgTable('embeddings', {
   externalId: text('external_id'), // id helpful for linking to other tables / documents
   urls: text('urls').array(), // Array of urls
   url_summaries: text('url_summaries').array(), // Array of url summaries
+  externalUrl: text('external_url'), // External url for the content
 });

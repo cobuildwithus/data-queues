@@ -5,6 +5,7 @@ export interface JobBody {
   users: string[];
   tags: string[];
   externalId: string;
+  externalUrl?: string;
   hashSuffix?: string;
   urls?: string[];
   rawContent?: string;

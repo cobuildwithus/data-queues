@@ -59,3 +59,11 @@ export const getAllCastsWithParents = async (fid: number) => {
 export type CastWithParent = Awaited<
   ReturnType<typeof getAllCastsWithParents>
 >[number];
+
+export const getFarcasterProfile = async (fid: number) => {
+  const profile = await farcasterDb
+    .select()
+    .from(farcasterProfiles)
+    .where(eq(farcasterProfiles.fid, fid));
+  return profile[0];
+};

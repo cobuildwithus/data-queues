@@ -57,14 +57,7 @@ export const singleEmbeddingWorker = async (
       );
       log(`Generated embedding with ${embedding.length} dimensions`, job);
 
-      await storeEmbedding(
-        embedding,
-        input,
-        urlSummaries,
-        data,
-        contentHash,
-        data.rawContent
-      );
+      await storeEmbedding(embedding, input, urlSummaries, data, contentHash);
 
       await updateJobProgress(job, 'embeddings', 100);
 

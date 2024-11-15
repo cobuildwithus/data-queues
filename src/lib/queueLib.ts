@@ -133,8 +133,7 @@ export const storeEmbedding = async (
   input: string,
   urlSummaries: string[],
   job: JobBody,
-  contentHash: string,
-  rawContent?: string
+  contentHash: string
 ) => {
   await db
     .insert(embeddings)
@@ -142,7 +141,7 @@ export const storeEmbedding = async (
       id: crypto.randomUUID(),
       type: job.type,
       content: input,
-      rawContent,
+      rawContent: job.rawContent,
       url_summaries: urlSummaries,
       urls: job.urls,
       contentHash: contentHash,
@@ -154,6 +153,7 @@ export const storeEmbedding = async (
       users: Array.from(new Set(job.users.map((user) => user.toLowerCase()))),
       tags: Array.from(new Set(job.tags.map((tag) => tag.toLowerCase()))),
       externalId: job.externalId,
+      externalUrl: job.externalUrl,
     })
     .onConflictDoNothing();
 };

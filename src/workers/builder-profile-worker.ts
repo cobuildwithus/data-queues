@@ -3,7 +3,10 @@ import { BuilderProfileJobBody, JobBody } from '../types/job';
 import { log } from '../lib/queueLib';
 import { RedisClientType } from 'redis';
 import { generateBuilderProfile } from '../lib/builders/analyze-builder';
-import { getAllCastsWithParents } from '../database/queries';
+import {
+  getAllCastsWithParents,
+  getFarcasterProfile,
+} from '../database/queries';
 import { FarcasterCast } from '../database/farcaster-schema';
 
 export const builderProfileWorker = async (
@@ -26,6 +29,15 @@ export const builderProfileWorker = async (
         const results = [];
         for (const profile of builderProfiles) {
           const casts = await getAllCastsWithParents(Number(profile.fid));
+          const farcasterProfile = await getFarcasterProfile(
+            Number(profile.fid)
+          );
+
+          if (!farcasterProfile) {
+            throw new Error(
+              `Farcaster profile not found for FID: ${profile.fid}`
+            );
+          }
 
           log(`Analyzing ${casts.length} casts for FID: ${profile.fid}`, job);
 
@@ -45,13 +57,16 @@ export const builderProfileWorker = async (
             analysis,
           });
 
+          const groups = getUniqueRootParentUrls(casts);
+
           embeddingJobs.push({
             type: 'builder-profile',
             content: cleanTextForEmbedding(analysis),
             rawContent: analysis,
             externalId: profile.fid.toString(),
-            groups: getUniqueRootParentUrls(casts),
+            groups,
             users: [profile.fid.toString()],
+            externalUrl: `https://warpcast.com/${farcasterProfile.fname}`,
             tags: [],
           });
         }
@@ -83,15 +98,19 @@ export const builderProfileWorker = async (
 };
 
 const getUniqueRootParentUrls = (casts: FarcasterCast[]): string[] => {
-  return [
-    ...new Set(
+  return Array.from(
+    new Set(
       casts
         .filter(
           (cast) => cast.parentHash === null && cast.rootParentUrl !== null
         )
-        .map((cast) => cast.rootParentUrl!)
-    ),
-  ];
+        .map((cast) => cast.rootParentUrl)
+        .filter(
+          (url): url is string =>
+            url !== undefined && url !== null && url.trim() !== ''
+        )
+    )
+  );
 };
 
 const cleanTextForEmbedding = (text: string) => {

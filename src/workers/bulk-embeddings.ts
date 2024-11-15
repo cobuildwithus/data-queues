@@ -65,14 +65,7 @@ export const bulkEmbeddingsWorker = async (
           jobs
         );
 
-        await storeEmbedding(
-          embedding,
-          input,
-          urlSummaries,
-          item,
-          contentHash,
-          item.rawContent
-        );
+        await storeEmbedding(embedding, input, urlSummaries, item, contentHash);
 
         await storeJobId(redisClient, jobId, contentHash);
 

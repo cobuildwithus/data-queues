@@ -14,9 +14,9 @@ const anthropic = createAnthropic({
   apiKey: anthropicApiKey,
 });
 
-const CASTS_PER_CHUNK = 500; // Fixed number of casts per chunk
+const CASTS_PER_CHUNK = 650; // Fixed number of casts per chunk
 
-const BUILDER_CACHE_KEY = 'builder-profile-analysis-chunk:';
+const BUILDER_CACHE_KEY = 'builder-profile-analyze-chunk:';
 
 export async function generateBuilderProfile(
   casts: CastWithParent[],
@@ -162,7 +162,7 @@ async function summarizeAnalysis(
         role: 'system',
         content: `Combine the following summaries into one comprehensive builder profile.
         The chunks are ordered from oldest to newest, and the newer chunks might have less information, but are more important because they are more recent.
-        Do not mention that you are doing this, just analyze the data and return it in the format of the prompt below:
+        Do not mention that you are combining the chunks or otherwise summarizing them in your response, just analyze the data and return it in the format requested defined by the prompt below:
 ${builderProfilePrompt()}`,
       },
       {
