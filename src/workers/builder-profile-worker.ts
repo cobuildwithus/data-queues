@@ -24,6 +24,8 @@ export const builderProfileWorker = async (
         for (const profile of builderProfiles) {
           const casts = await getAllCastsWithParents(Number(profile.fid));
 
+          log(`Analyzing ${casts.length} casts for FID: ${profile.fid}`, job);
+
           // Generate builder profile analysis
           const analysis = await generateBuilderProfile(
             casts,

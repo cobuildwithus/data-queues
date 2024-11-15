@@ -123,16 +123,37 @@ export async function generateBuilderProfile(
     return partialAnalyses[0];
   }
 
-  const finalSummary = await summarizeAnalysis(combinedAnalysis, job);
+  const finalSummary = await summarizeAnalysis(
+    combinedAnalysis,
+    job,
+    redisClient
+  );
 
   return finalSummary;
 }
-
 async function summarizeAnalysis(
   combinedAnalysis: string,
-  job: Job
+  job: Job,
+  redisClient: RedisClientType
 ): Promise<string> {
   log(`Summarizing analysis for multiple chunks of data`, job);
+
+  // Check cache first using hash of combined analysis
+  const cacheKey = `summary-analysis-v1:${crypto
+    .createHash('sha256')
+    .update(combinedAnalysis)
+    .digest('hex')}`;
+
+  const existingSummary = await getCachedResult<string>(
+    redisClient,
+    cacheKey,
+    ''
+  );
+  if (existingSummary) {
+    log(`Found cached summary analysis`, job);
+    return existingSummary;
+  }
+
   // Combine partial summaries into the final summary
   const { text: finalSummary } = await generateText({
     model: anthropic('claude-3-5-sonnet-20241022'),
@@ -151,6 +172,15 @@ ${builderProfilePrompt()}`,
     ],
     maxTokens: 4096,
   });
+
+  // Cache the summary
+  await cacheResult<string>(
+    redisClient,
+    cacheKey,
+    '',
+    async () => finalSummary,
+    true
+  );
 
   return finalSummary;
 }
