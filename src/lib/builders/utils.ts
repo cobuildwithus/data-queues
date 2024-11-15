@@ -77,12 +77,14 @@ ${
 ---`;
 }
 
-export function safeTrim(text: string) {
+export function safeTrim(text: string | null | undefined): string {
+  if (text === null || text === undefined) {
+    return '';
+  }
   if (typeof text === 'string') {
     return text.trim();
-  } else {
-    throw new Error(
-      `Text ${JSON.stringify(text)} is not a string that can be trimmed`
-    );
   }
+  throw new Error(
+    `Text ${JSON.stringify(text)} is not a string that can be trimmed`
+  );
 }
