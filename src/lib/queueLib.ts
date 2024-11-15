@@ -100,14 +100,11 @@ export const getEmbedding = async (
   openai: OpenAI,
   text: string,
   job: Job,
-  urls?: string[],
-  getUrlSummaries?: boolean // only if in valid channels
+  urls?: string[]
 ): Promise<{ embedding: number[]; input: string; urlSummaries: string[] }> => {
   let input = text.replace('\n', ' ');
 
-  const summaries = getUrlSummaries
-    ? await fetchEmbeddingSummaries(redisClient, job, urls)
-    : [];
+  const summaries = await fetchEmbeddingSummaries(redisClient, job, urls);
 
   // Add URL context to input text
   if (summaries.length > 0) {
@@ -136,7 +133,8 @@ export const storeEmbedding = async (
   input: string,
   urlSummaries: string[],
   job: JobBody,
-  contentHash: string
+  contentHash: string,
+  rawContent?: string
 ) => {
   await db
     .insert(embeddings)
@@ -144,6 +142,7 @@ export const storeEmbedding = async (
       id: crypto.randomUUID(),
       type: job.type,
       content: input,
+      rawContent,
       url_summaries: urlSummaries,
       urls: job.urls,
       contentHash: contentHash,
@@ -176,22 +175,4 @@ export const handleContentHash = async (redisClient: any, job: JobBody) => {
   }
 
   return { exists: false, jobId: null, contentHash };
-};
-
-// Validate that groups contain required channels
-export const shouldGetUrlSummaries = (groups: string[]) => {
-  const requiredChannels = [
-    'https://warpcast.com/~/channel/vrbs',
-    'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03', // nouns
-    'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c', // gnars
-    'https://warpcast.com/~/channel/flows',
-    'https://warpcast.com/~/channel/yellow',
-  ];
-
-  // Check if any of the required channels are present in groups
-  const hasRequiredChannel = groups.some((group) =>
-    requiredChannels.includes(group.toLowerCase())
-  );
-
-  return hasRequiredChannel;
 };

@@ -23,19 +23,31 @@ import {
 import { handleBulkAddEmbeddingJob } from './jobs/addBulkEmbeddingJob';
 import { handleBulkAddIsGrantUpdateJob } from './jobs/add-bulk-is-grant-update-job';
 import { handleBuilderProfileJob } from './jobs/add-builder-profile-job';
+import {
+  BuilderProfileJobBody,
+  DeletionJobBody,
+  IsGrantUpdateJobBody,
+  JobBody,
+} from './types/job';
 
 const setupQueue = async () => {
-  const embeddingsQueue = createQueue('EmbeddingsQueue');
-  const deletionQueue = createQueue('DeletionQueue');
-  const bulkEmbeddingsQueue = createQueue('BulkEmbeddingsQueue');
-  const isGrantUpdateQueue = createQueue('IsGrantUpdateQueue');
-  const builderProfileQueue = createQueue('BuilderProfileQueue');
+  const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
+  const deletionQueue = createQueue<DeletionJobBody>('DeletionQueue');
+  const bulkEmbeddingsQueue = createQueue<JobBody[]>('BulkEmbeddingsQueue');
+  const isGrantUpdateQueue =
+    createQueue<IsGrantUpdateJobBody[]>('IsGrantUpdateQueue');
+  const builderProfileQueue = createQueue<BuilderProfileJobBody[]>(
+    'BuilderProfileQueue'
+  );
 
   await setupQueueProcessor(embeddingsQueue.name);
   await setupDeletionQueueProcessor(deletionQueue.name);
   await setupBulkQueueProcessor(bulkEmbeddingsQueue.name);
   await setupIsGrantUpdateQueueProcessor(isGrantUpdateQueue.name);
-  await setupBuilderProfileQueueProcessor(builderProfileQueue.name);
+  await setupBuilderProfileQueueProcessor(
+    builderProfileQueue.name,
+    bulkEmbeddingsQueue
+  );
 
   return {
     embeddingsQueue,

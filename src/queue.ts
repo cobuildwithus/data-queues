@@ -6,6 +6,7 @@ import { bulkEmbeddingsWorker } from './workers/bulk-embeddings';
 import { singleEmbeddingWorker } from './workers/single-embedding';
 import { isGrantUpdateWorker } from './workers/is-grant-update';
 import { builderProfileWorker } from './workers/builder-profile-worker';
+import { JobBody } from './types/job';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY environment variable is required');
@@ -39,7 +40,8 @@ const ensureRedisConnected = async () => {
   }
 };
 
-export const createQueue = (name: string) => new Queue(name, { connection });
+export const createQueue = <T>(name: string) =>
+  new Queue<T>(name, { connection });
 
 export const setupQueueProcessor = async (queueName: string) => {
   await ensureRedisConnected();
@@ -75,8 +77,16 @@ export const setupIsGrantUpdateQueueProcessor = async (queueName: string) => {
   isGrantUpdateWorker(queueName, connection, redisClient as RedisClientType);
 };
 
-export const setupBuilderProfileQueueProcessor = async (queueName: string) => {
+export const setupBuilderProfileQueueProcessor = async (
+  queueName: string,
+  bulkEmbeddingsQueue: Queue<JobBody[]>
+) => {
   await ensureRedisConnected();
 
-  builderProfileWorker(queueName, connection, redisClient as RedisClientType);
+  builderProfileWorker(
+    queueName,
+    connection,
+    redisClient as RedisClientType,
+    bulkEmbeddingsQueue
+  );
 };

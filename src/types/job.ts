@@ -7,6 +7,7 @@ export interface JobBody {
   externalId: string;
   hashSuffix?: string;
   urls?: string[];
+  rawContent?: string;
 }
 
 export interface DeletionJobBody {
@@ -21,6 +22,7 @@ export const validTypes = [
   'flow',
   'dispute',
   'draft-application',
+  'builder-profile',
 ];
 
 export interface IsGrantUpdateJobBody {

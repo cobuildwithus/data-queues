@@ -2,10 +2,9 @@ import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
 import { CastWithParent } from '../../database/queries';
 import { farcasterDb } from '../../database/farcasterDb';
-import { eq } from 'drizzle-orm';
-
 import { fetchEmbeddingSummaries, log } from '../queueLib';
 import { farcasterCasts } from '../../database/farcaster-schema';
+import { eq } from 'drizzle-orm';
 
 export async function getAndSaveEmbedSummaries(
   cast: Omit<CastWithParent['parentCast'], 'fname'>,

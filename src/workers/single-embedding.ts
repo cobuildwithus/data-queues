@@ -6,7 +6,6 @@ import {
   getEmbedding,
   storeEmbedding,
   handleContentHash,
-  shouldGetUrlSummaries,
   storeJobId,
 } from '../lib/queueLib';
 
@@ -54,11 +53,18 @@ export const singleEmbeddingWorker = async (
         openai,
         data.content,
         job,
-        data.urls,
-        shouldGetUrlSummaries(data.groups)
+        data.urls
       );
       log(`Generated embedding with ${embedding.length} dimensions`, job);
-      await storeEmbedding(embedding, input, urlSummaries, data, contentHash);
+
+      await storeEmbedding(
+        embedding,
+        input,
+        urlSummaries,
+        data,
+        contentHash,
+        data.rawContent
+      );
 
       await updateJobProgress(job, 'embeddings', 100);
 

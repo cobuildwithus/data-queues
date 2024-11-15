@@ -15,6 +15,7 @@ export const embeddings = pgTable('embeddings', {
   type: varchar('type', { length: 50 }).$type<(typeof validTypes)[number]>(), // Typed to match JobBody type
   version: integer('version').default(1),
   content: text('content'),
+  rawContent: text('raw_content'),
   contentHash: varchar('content_hash', { length: 64 }).unique(),
   embedding: vector('embedding', { dimensions: 1536 }), // Store as vector
   groups: text('groups').array(), // Array of groups/communities eg: nouns

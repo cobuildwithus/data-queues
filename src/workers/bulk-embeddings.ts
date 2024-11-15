@@ -6,7 +6,6 @@ import {
   getEmbedding,
   storeEmbedding,
   handleContentHash,
-  shouldGetUrlSummaries,
   storeJobId,
 } from '../lib/queueLib';
 import OpenAI from 'openai';
@@ -56,9 +55,9 @@ export const bulkEmbeddingsWorker = async (
           openai,
           item.content,
           jobs,
-          item.urls,
-          shouldGetUrlSummaries(item.groups)
+          item.urls
         );
+
         log(
           `Generated embedding ${i + 1}/${data.length} with ${
             embedding.length
@@ -66,7 +65,15 @@ export const bulkEmbeddingsWorker = async (
           jobs
         );
 
-        await storeEmbedding(embedding, input, urlSummaries, item, contentHash);
+        await storeEmbedding(
+          embedding,
+          input,
+          urlSummaries,
+          item,
+          contentHash,
+          item.rawContent
+        );
+
         await storeJobId(redisClient, jobId, contentHash);
 
         results.push({
