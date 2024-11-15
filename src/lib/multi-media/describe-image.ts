@@ -1,5 +1,4 @@
 import { Job } from 'bullmq';
-import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 import { RedisClientType } from 'redis';
@@ -134,8 +133,6 @@ export async function describeImage(
   redisClient: RedisClientType,
   job: Job
 ): Promise<string | null> {
-  log(`Starting image description process for: ${imageUrl}`, job);
-
   // Validate URL format and check if it's from an allowed image domain
   try {
     const urlObj = new URL(imageUrl);
@@ -156,6 +153,8 @@ export async function describeImage(
     log(`Skipping invalid URL: ${imageUrl}`, job);
     return null;
   }
+
+  log(`Starting image description process for: ${imageUrl}`, job);
 
   const cachedDescription = await getCachedImageDescription(
     redisClient,
@@ -264,3 +263,4 @@ export async function describeImage(
     }
   }
 }
+'
