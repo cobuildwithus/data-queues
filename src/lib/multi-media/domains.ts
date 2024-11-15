@@ -58,4 +58,5 @@ export const nonImageDomains = [
   'give.party',
   'paragraph.xyz',
   'alpha.tavern.fm',
+  'uplink.wtf',
 ];
