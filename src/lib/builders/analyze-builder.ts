@@ -139,7 +139,7 @@ export async function generateBuilderProfile(
           maxTokens: 4096,
         }),
       job,
-      [anthropicModel, openAIModel, googleAiStudioModel]
+      [openAIModel, googleAiStudioModel]
     );
     const { text } = response;
 
@@ -219,7 +219,7 @@ ${builderProfilePrompt()}`,
         maxTokens: 4096,
       }),
     job,
-    [anthropicModel, openAIModel, googleAiStudioModel]
+    [openAIModel, googleAiStudioModel]
   );
 
   const finalSummary = response.text;
@@ -274,7 +274,9 @@ async function retryWithExponentialBackoff<T>(
       // Switch to the next model
       const nextModelIndex = modelIndex + 1;
       log(
-        `Switching to model ${models[nextModelIndex]} due to rate limit`,
+        `Switching to model ${models[
+          nextModelIndex
+        ].toString()} due to rate limit`,
         job
       );
       return retryWithExponentialBackoff(
