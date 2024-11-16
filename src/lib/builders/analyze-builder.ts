@@ -240,8 +240,8 @@ async function retryWithExponentialBackoff<T>(
   fnFactory: (model: any) => () => Promise<T>,
   job: Job,
   models: LanguageModelV1[],
-  retries: number = 3,
-  delay: number = 1000,
+  retries: number = 4,
+  delay: number = 20000,
   modelIndex: number = 0
 ): Promise<T> {
   const currentModel = models[modelIndex];
@@ -304,9 +304,21 @@ async function retryWithExponentialBackoff<T>(
 }
 
 function isRateLimitError(error: any): boolean {
+  // Check error message patterns for different providers
+  const errorMessage = error.message?.toLowerCase() || '';
   return (
-    error.message?.includes('too_many_requests') ||
-    error.message?.includes('rate limit') ||
-    error.message?.includes('429')
+    // OpenAI patterns
+    errorMessage.includes('too_many_requests') ||
+    errorMessage.includes('rate limit') ||
+    errorMessage.includes('429') ||
+    // Google patterns
+    errorMessage.includes('resource_exhausted') ||
+    errorMessage.includes('quota exceeded') ||
+    // Anthropic patterns
+    errorMessage.includes('rate_limit_error') ||
+    errorMessage.includes('too_many_requests') ||
+    // Generic status code check
+    error.status === 429 ||
+    error.code === 429
   );
 }
