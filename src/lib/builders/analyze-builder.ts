@@ -1,4 +1,4 @@
-import { generateText, LanguageModelV1 } from 'ai';
+import { generateText } from 'ai';
 import { log } from '../queueLib';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';

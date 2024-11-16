@@ -6,9 +6,8 @@ import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
 import { getCachedResult } from '../cache/cacheResult';
 import { cacheResult } from '../cache/cacheResult';
-import { anthropicModel, retryWithExponentialBackoff } from '../ai';
-import { googleAiStudioModel } from '../ai';
-import { openAIModel } from '../ai';
+import { retryWithExponentialBackoff } from '../ai';
+import { googleAiStudioModel, openAIModel } from '../ai';
 
 const CAST_ANALYSIS_CACHE_PREFIX = 'ai-cast-analysis-v1:';
 
@@ -100,7 +99,7 @@ export async function analyzeCast(
         maxTokens: 1500,
       }),
     job,
-    [anthropicModel, openAIModel, googleAiStudioModel]
+    [openAIModel, googleAiStudioModel]
   );
 
   log(JSON.stringify(object), job);

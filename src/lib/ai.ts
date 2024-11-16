@@ -30,7 +30,7 @@ const googleAiStudio = createGoogleGenerativeAI({
   apiKey: googleAiStudioKey,
 });
 
-export const anthropicModel = anthropic('claude-3-5-sonnet-20241022');
+// export const anthropicModel = anthropic('claude-3-5-sonnet-20241022');
 export const openAIModel = openai('gpt-4o');
 export const googleAiStudioModel = googleAiStudio('gemini-1.5-pro');
 
