@@ -1,5 +1,5 @@
-import { AnthropicProvider, createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, LanguageModelV1 } from 'ai';
 import { log } from '../queueLib';
 import { RedisClientType } from 'redis';
@@ -9,11 +9,13 @@ import { builderProfilePrompt } from '../prompts/builder-profile';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
 import crypto from 'crypto';
 import { filterCasts, generateCastText } from './utils';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;
+const googleAiStudioKey = process.env.GOOGLE_AI_STUDIO_KEY;
 
-if (!anthropicApiKey || !openaiApiKey) {
+if (!anthropicApiKey || !openaiApiKey || !googleAiStudioKey) {
   throw new Error('Anthropic or OpenAI API key not found');
 }
 
@@ -25,8 +27,13 @@ const openai = createOpenAI({
   apiKey: openaiApiKey,
 });
 
+const googleAiStudio = createGoogleGenerativeAI({
+  apiKey: googleAiStudioKey,
+});
+
 const anthropicModel = anthropic('claude-3-5-sonnet-20241022');
 const openAIModel = openai('gpt-4o');
+const googleAiStudioModel = googleAiStudio('gemini-1.5-pro');
 
 const CASTS_PER_CHUNK = 650; // Fixed number of casts per chunk
 
@@ -132,7 +139,7 @@ export async function generateBuilderProfile(
           maxTokens: 4096,
         }),
       job,
-      [anthropicModel, openAIModel]
+      [anthropicModel, openAIModel, googleAiStudioModel]
     );
     const { text } = response;
 
@@ -212,7 +219,7 @@ ${builderProfilePrompt()}`,
         maxTokens: 4096,
       }),
     job,
-    [anthropicModel, openAIModel]
+    [anthropicModel, openAIModel, googleAiStudioModel]
   );
 
   const finalSummary = response.text;
