@@ -99,20 +99,23 @@ export async function generateBuilderProfile(
 
     // Generate analysis for the chunk
     log(`Analyzing chunk ${i + 1} of ${chunks.length}`, job);
-    const { text } = await generateText({
-      model: anthropic('claude-3-5-sonnet-20241022'),
-      messages: [
-        {
-          role: 'system',
-          content: builderProfilePrompt(),
-        },
-        {
-          role: 'user',
-          content: `Here are the posts:\n\n${chunk}`,
-        },
-      ],
-      maxTokens: 4096,
-    });
+    const { text } = await retryWithExponentialBackoff(async () => {
+      const response = await generateText({
+        model: anthropic('claude-3-5-sonnet-20241022'),
+        messages: [
+          {
+            role: 'system',
+            content: builderProfilePrompt(),
+          },
+          {
+            role: 'user',
+            content: `Here are the posts:\n\n${chunk}`,
+          },
+        ],
+        maxTokens: 4096,
+      });
+      return response;
+    }, job);
 
     // Cache the analysis
     await cacheResult<string>(
@@ -170,23 +173,27 @@ async function summarizeAnalysis(
   }
 
   // Combine partial summaries into the final summary
-  const { text: finalSummary } = await generateText({
-    model: anthropic('claude-3-5-sonnet-20241022'),
-    messages: [
-      {
-        role: 'system',
-        content: `Combine the following summaries into one comprehensive builder profile.
-        The chunks are ordered from oldest to newest, and the newer chunks might have less information, but are more important because they are more recent.
-        Do not mention that you are combining the chunks or otherwise summarizing them in your response, just analyze the data and return it in the format requested defined by the prompt below:
+  const { text: finalSummary } = await retryWithExponentialBackoff(
+    async () =>
+      generateText({
+        model: anthropic('claude-3-5-sonnet-20241022'),
+        messages: [
+          {
+            role: 'system',
+            content: `Combine the following summaries into one comprehensive builder profile.
+            The chunks are ordered from oldest to newest, and the newer chunks might have less information, but are more important because they are more recent.
+            Do not mention that you are combining the chunks or otherwise summarizing them in your response, just analyze the data and return it in the format requested defined by the prompt below:
 ${builderProfilePrompt()}`,
-      },
-      {
-        role: 'user',
-        content: `Here are the summaries:\n\n${combinedAnalysis}`,
-      },
-    ],
-    maxTokens: 4096,
-  });
+          },
+          {
+            role: 'user',
+            content: `Here are the summaries:\n\n${combinedAnalysis}`,
+          },
+        ],
+        maxTokens: 4096,
+      }),
+    job
+  );
 
   // Cache the summary
   await cacheResult<string>(
@@ -198,4 +205,52 @@ ${builderProfilePrompt()}`,
   );
 
   return finalSummary;
+}
+
+async function retryWithExponentialBackoff<T>(
+  fn: () => Promise<T>,
+  job: Job,
+  retries: number = 3,
+  delay: number = 1000
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const transientErrorCodes = [
+      'ENOTFOUND',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'EAI_AGAIN',
+      // Add other transient error codes as needed
+    ];
+
+    const isTransientError =
+      transientErrorCodes.includes(error.code) ||
+      error.status >= 500 ||
+      error.message?.includes('too_many_requests') || // Anthropic rate limit error
+      error.message?.includes('rate limit') ||
+      error.message?.includes('429'); // HTTP 429 Too Many Requests
+
+    const status = error?.status || error?.code || 'Unknown';
+    log(
+      `Error during operation: ${error.message}. Status: ${status}. Retries left: ${retries}`,
+      job
+    );
+
+    if (retries > 0 && isTransientError) {
+      // Use longer delay for rate limit errors
+      const retryDelay =
+        error.message?.includes('too_many_requests') ||
+        error.message?.includes('rate limit') ||
+        error.message?.includes('429')
+          ? delay * 4 // Quadruple delay for rate limits
+          : delay * 2;
+
+      log(`Retrying after ${retryDelay} ms...`, job);
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      return retryWithExponentialBackoff(fn, job, retries - 1, retryDelay);
+    } else {
+      throw error;
+    }
+  }
 }
