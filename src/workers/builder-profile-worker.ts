@@ -12,6 +12,23 @@ import { cacheResult, getCachedResult } from '../lib/cache/cacheResult';
 import { safeTrim } from '../lib/builders/utils';
 
 const BUILDER_LOCK_PREFIX = 'builder-profile-locked-v2:';
+const LOCK_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+interface LockData {
+  timestamp: number;
+  ttl: number;
+}
+
+const isLocked = async (
+  redisClient: RedisClientType,
+  lockKey: string
+): Promise<boolean> => {
+  const lockData = await getCachedResult<LockData>(redisClient, lockKey, '');
+  if (!lockData) return false;
+
+  const now = Date.now();
+  return now < lockData.timestamp + lockData.ttl;
+};
 
 export const builderProfileWorker = async (
   queueName: string,
@@ -34,13 +51,9 @@ export const builderProfileWorker = async (
         for (const profile of builderProfiles) {
           // Check if this builder is already being processed
           const lockKey = `${BUILDER_LOCK_PREFIX}${profile.fid}`;
-          const existingLock = await getCachedResult<string>(
-            redisClient,
-            lockKey,
-            ''
-          );
+          const locked = await isLocked(redisClient, lockKey);
 
-          if (existingLock) {
+          if (locked) {
             log(
               `Builder ${profile.fid} is already being processed, skipping`,
               job
@@ -50,11 +63,16 @@ export const builderProfileWorker = async (
 
           try {
             // Set lock before processing
+            const lockData: LockData = {
+              timestamp: Date.now(),
+              ttl: LOCK_TTL,
+            };
+
             await cacheResult(
               redisClient,
               lockKey,
               '',
-              async () => 'locked',
+              async () => lockData,
               true
             );
 
