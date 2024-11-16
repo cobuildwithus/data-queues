@@ -1,4 +1,3 @@
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { IsGrantUpdateJobBody } from '../../types/job';
@@ -7,10 +6,9 @@ import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
 import { getCachedResult } from '../cache/cacheResult';
 import { cacheResult } from '../cache/cacheResult';
-
-const anthropic = createAnthropic({
-  apiKey: `${process.env.ANTHROPIC_API_KEY}`,
-});
+import { anthropicModel, retryWithExponentialBackoff } from '../ai';
+import { googleAiStudioModel } from '../ai';
+import { openAIModel } from '../ai';
 
 const CAST_ANALYSIS_CACHE_PREFIX = 'ai-cast-analysis-v1:';
 
@@ -70,33 +68,40 @@ export async function analyzeCast(
 
   const summaries = await fetchEmbeddingSummaries(redisClient, job, data.urls);
 
-  const { object } = await generateObject({
-    model: anthropic('claude-3-5-sonnet-20241022'),
-    schema: z.object({
-      grantId: z.string().optional(),
-      isGrantUpdate: z.boolean(),
-      reason: z.string().describe("Reason for why it's a grant update, or not"),
-      confidenceScore: z
-        .number()
-        .describe("Confidence score whether it's a grant update or not"),
-    }),
-    messages: [
-      {
-        role: 'system',
-        content: getMessageContent(data, summaries, job),
-      },
-      {
-        role: 'user',
-        content: [
+  const { object } = await retryWithExponentialBackoff(
+    (model) => () =>
+      generateObject({
+        model,
+        schema: z.object({
+          grantId: z.string().optional(),
+          isGrantUpdate: z.boolean(),
+          reason: z
+            .string()
+            .describe("Reason for why it's a grant update, or not"),
+          confidenceScore: z
+            .number()
+            .describe("Confidence score whether it's a grant update or not"),
+        }),
+        messages: [
           {
-            type: 'text',
-            text: data.castContent || 'NO CAST CONTENT PROVIDED',
+            role: 'system',
+            content: getMessageContent(data, summaries, job),
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: data.castContent || 'NO CAST CONTENT PROVIDED',
+              },
+            ],
           },
         ],
-      },
-    ],
-    maxTokens: 1500,
-  });
+        maxTokens: 1500,
+      }),
+    job,
+    [anthropicModel, openAIModel, googleAiStudioModel]
+  );
 
   log(JSON.stringify(object), job);
 
