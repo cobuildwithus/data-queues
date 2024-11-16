@@ -11,7 +11,7 @@ import { FarcasterCast } from '../database/farcaster-schema';
 import { cacheResult, getCachedResult } from '../lib/cache/cacheResult';
 import { safeTrim } from '../lib/builders/utils';
 
-const BUILDER_LOCK_PREFIX = 'builder-profile-locked:';
+const BUILDER_LOCK_PREFIX = 'builder-profile-locked-v2:';
 
 export const builderProfileWorker = async (
   queueName: string,
@@ -64,8 +64,6 @@ export const builderProfileWorker = async (
             );
 
             if (!farcasterProfile) {
-              // Clear lock if profile not found
-              await redisClient.del(lockKey);
               throw new Error(
                 `Farcaster profile not found for FID: ${profile.fid}`
               );
@@ -105,7 +103,7 @@ export const builderProfileWorker = async (
             log(`Added builder profile to embedding queue`, job);
             await redisClient.del(lockKey);
           } catch (error) {
-            // Clear lock if anything fails
+            // Clear lock if profile not found
             await redisClient.del(lockKey);
             throw error;
           }
