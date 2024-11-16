@@ -10,6 +10,7 @@ import { filterCasts, generateCastText } from './utils';
 import {
   googleAiStudioModel,
   openAIModel,
+  anthropicModel,
   retryWithExponentialBackoff,
 } from '../ai';
 
@@ -117,7 +118,7 @@ export async function generateBuilderProfile(
           maxTokens: 4096,
         }),
       job,
-      [openAIModel, googleAiStudioModel]
+      [anthropicModel, openAIModel, googleAiStudioModel]
     );
     const { text } = response;
 
@@ -197,7 +198,7 @@ ${builderProfilePrompt()}`,
         maxTokens: 4096,
       }),
     job,
-    [openAIModel, googleAiStudioModel]
+    [anthropicModel, openAIModel, googleAiStudioModel]
   );
 
   const finalSummary = response.text;
