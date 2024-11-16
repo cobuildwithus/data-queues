@@ -1,5 +1,6 @@
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText } from 'ai';
+import { AnthropicProvider, createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai';
+import { generateText, LanguageModelV1 } from 'ai';
 import { log } from '../queueLib';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
@@ -9,10 +10,23 @@ import { cacheResult, getCachedResult } from '../cache/cacheResult';
 import crypto from 'crypto';
 import { filterCasts, generateCastText } from './utils';
 
-const anthropicApiKey = process.env.ANTHROPIC_API_KEY || '';
+const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+
+if (!anthropicApiKey || !openaiApiKey) {
+  throw new Error('Anthropic or OpenAI API key not found');
+}
+
 const anthropic = createAnthropic({
   apiKey: anthropicApiKey,
 });
+
+const openai = createOpenAI({
+  apiKey: openaiApiKey,
+});
+
+const anthropicModel = anthropic('claude-3-5-sonnet-20241022');
+const openAIModel = openai('gpt-4o');
 
 const CASTS_PER_CHUNK = 650; // Fixed number of casts per chunk
 
@@ -28,7 +42,7 @@ export async function generateBuilderProfile(
   const sortedCasts = filterCasts(casts);
 
   const castsText: string[] = [];
-  const BATCH_SIZE = 1000;
+  const BATCH_SIZE = 1500;
 
   // Generate text representations of casts in batches
   for (let i = 0; i < sortedCasts.length; i += BATCH_SIZE) {
@@ -99,23 +113,28 @@ export async function generateBuilderProfile(
 
     // Generate analysis for the chunk
     log(`Analyzing chunk ${i + 1} of ${chunks.length}`, job);
-    const { text } = await retryWithExponentialBackoff(async () => {
-      const response = await generateText({
-        model: anthropic('claude-3-5-sonnet-20241022'),
-        messages: [
-          {
-            role: 'system',
-            content: builderProfilePrompt(),
-          },
-          {
-            role: 'user',
-            content: `Here are the posts:\n\n${chunk}`,
-          },
-        ],
-        maxTokens: 4096,
-      });
-      return response;
-    }, job);
+    // Define models to try in order
+
+    const response = await retryWithExponentialBackoff(
+      (model) => () =>
+        generateText({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: builderProfilePrompt(),
+            },
+            {
+              role: 'user',
+              content: `Here are the posts:\n\n${chunk}`,
+            },
+          ],
+          maxTokens: 4096,
+        }),
+      job,
+      [anthropicModel, openAIModel]
+    );
+    const { text } = response;
 
     // Cache the analysis
     await cacheResult<string>(
@@ -173,10 +192,10 @@ async function summarizeAnalysis(
   }
 
   // Combine partial summaries into the final summary
-  const { text: finalSummary } = await retryWithExponentialBackoff(
-    async () =>
+  const response = await retryWithExponentialBackoff(
+    (model) => () =>
       generateText({
-        model: anthropic('claude-3-5-sonnet-20241022'),
+        model,
         messages: [
           {
             role: 'system',
@@ -192,8 +211,11 @@ ${builderProfilePrompt()}`,
         ],
         maxTokens: 4096,
       }),
-    job
+    job,
+    [anthropicModel, openAIModel]
   );
+
+  const finalSummary = response.text;
 
   // Cache the summary
   await cacheResult<string>(
@@ -208,13 +230,17 @@ ${builderProfilePrompt()}`,
 }
 
 async function retryWithExponentialBackoff<T>(
-  fn: () => Promise<T>,
+  fnFactory: (model: any) => () => Promise<T>,
   job: Job,
+  models: LanguageModelV1[],
   retries: number = 3,
-  delay: number = 1000
+  delay: number = 1000,
+  modelIndex: number = 0
 ): Promise<T> {
+  const currentModel = models[modelIndex];
+
   try {
-    return await fn();
+    return await fnFactory(currentModel)();
   } catch (error: any) {
     const transientErrorCodes = [
       'ENOTFOUND',
@@ -227,30 +253,53 @@ async function retryWithExponentialBackoff<T>(
     const isTransientError =
       transientErrorCodes.includes(error.code) ||
       error.status >= 500 ||
-      error.message?.includes('too_many_requests') || // Anthropic rate limit error
+      error.message?.includes('too_many_requests') ||
       error.message?.includes('rate limit') ||
-      error.message?.includes('429'); // HTTP 429 Too Many Requests
+      error.message?.includes('429');
 
     const status = error?.status || error?.code || 'Unknown';
     log(
-      `Error during operation: ${error.message}. Status: ${status}. Retries left: ${retries}`,
+      `Error with model ${currentModel}: ${error.message}. Status: ${status}. Retries left: ${retries}`,
       job
     );
 
-    if (retries > 0 && isTransientError) {
-      // Use longer delay for rate limit errors
-      const retryDelay =
-        error.message?.includes('too_many_requests') ||
-        error.message?.includes('rate limit') ||
-        error.message?.includes('429')
-          ? delay * 4 // Quadruple delay for rate limits
-          : delay * 2;
-
-      log(`Retrying after ${retryDelay} ms...`, job);
+    if (isRateLimitError(error) && modelIndex + 1 < models.length) {
+      // Switch to the next model
+      const nextModelIndex = modelIndex + 1;
+      log(
+        `Switching to model ${models[nextModelIndex]} due to rate limit`,
+        job
+      );
+      return retryWithExponentialBackoff(
+        fnFactory,
+        job,
+        models,
+        retries,
+        delay,
+        nextModelIndex
+      );
+    } else if (retries > 0 && isTransientError) {
+      const retryDelay = isRateLimitError(error) ? delay * 4 : delay * 2;
+      log(`Retrying after ${retryDelay} ms with model ${currentModel}...`, job);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
-      return retryWithExponentialBackoff(fn, job, retries - 1, retryDelay);
+      return retryWithExponentialBackoff(
+        fnFactory,
+        job,
+        models,
+        retries - 1,
+        retryDelay,
+        modelIndex
+      );
     } else {
       throw error;
     }
   }
+}
+
+function isRateLimitError(error: any): boolean {
+  return (
+    error.message?.includes('too_many_requests') ||
+    error.message?.includes('rate limit') ||
+    error.message?.includes('429')
+  );
 }
