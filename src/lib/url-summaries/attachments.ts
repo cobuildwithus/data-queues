@@ -94,7 +94,9 @@ export async function saveUrlSummariesForCastHash(
 ) {
   if (!castHash) throw new Error('Cast hash is required');
   if (castHash?.length !== 42) {
-    throw new Error('Cast hash is not valid');
+    throw new Error(
+      `Cast hash is not valid length: ${castHash}, ${castHash.length}`
+    );
   }
 
   const summaries = await fetchUrlSummaries(redisClient, job, urls);
