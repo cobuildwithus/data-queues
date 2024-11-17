@@ -47,6 +47,12 @@ Key Technologies/Protocols:
 - Production methods
 - Distribution systems
 
+Areas for Improvement:
+- Areas they could improve in
+- What they are actively working on to improve
+- Any inferred gaps in knowledge/impact to explore
+- Anything constructive feedback to add that could help them achieve their wildest dreams
+
 Communication:
 - Update / post frequency
 - Documentation approach
