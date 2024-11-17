@@ -5,7 +5,7 @@ import { deletionQueueWorker } from './workers/delete-embed';
 import { bulkEmbeddingsWorker } from './workers/bulk-embeddings';
 import { singleEmbeddingWorker } from './workers/single-embedding';
 import { isGrantUpdateWorker } from './workers/is-grant-update';
-import { builderProfileWorker } from './workers/builder-profile-worker';
+import { builderProfileWorker } from './workers/builder-profile/worker';
 import { JobBody } from './types/job';
 
 if (!process.env.OPENAI_API_KEY) {

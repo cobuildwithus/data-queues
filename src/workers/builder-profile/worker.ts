@@ -1,34 +1,23 @@
 import { Worker, Job, RedisOptions, ClusterOptions, Queue } from 'bullmq';
-import { BuilderProfileJobBody, JobBody } from '../types/job';
-import { log } from '../lib/helpers';
+import { BuilderProfileJobBody, JobBody } from '../../types/job';
+import { log } from '../../lib/helpers';
 import { RedisClientType } from 'redis';
-import { generateBuilderProfile } from '../lib/builders/analyze-builder';
+import { generateBuilderProfile } from '../../lib/builders/analyze-builder';
 import {
   getAllCastsWithParents,
   getFarcasterProfile,
-} from '../database/queries';
-import { FarcasterCast } from '../database/farcaster-schema';
-import { cacheResult, getCachedResult } from '../lib/cache/cacheResult';
-import { safeTrim } from '../lib/builders/utils';
+} from '../../database/queries';
+import { cacheResult } from '../../lib/cache/cacheResult';
+import { getUniqueRootParentUrls } from './utils';
+import { cleanTextForEmbedding } from '../../lib/embedding/utils';
 
 const BUILDER_LOCK_PREFIX = 'builder-profile-locked-v2:';
-const LOCK_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const LOCK_TTL = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
 
 interface LockData {
   timestamp: number;
   ttl: number;
 }
-
-const isLocked = async (
-  redisClient: RedisClientType,
-  lockKey: string
-): Promise<boolean> => {
-  const lockData = await getCachedResult<LockData>(redisClient, lockKey, '');
-  if (!lockData) return false;
-
-  const now = Date.now();
-  return now < lockData.timestamp + lockData.ttl;
-};
 
 export const builderProfileWorker = async (
   queueName: string,
@@ -51,14 +40,18 @@ export const builderProfileWorker = async (
         for (const profile of builderProfiles) {
           // Check if this builder is already being processed
           const lockKey = `${BUILDER_LOCK_PREFIX}${profile.fid}`;
-          const locked = await isLocked(redisClient, lockKey);
+          // Attempt to acquire the lock
+          const lockAcquired = await redisClient.set(lockKey, 'locked', {
+            NX: true,
+            PX: LOCK_TTL,
+          });
 
-          if (locked) {
+          if (!lockAcquired) {
             log(
-              `Builder ${profile.fid} is already being processed, skipping`,
+              `Builder ${profile.fid} is already being processed or was recently processed, skipping`,
               job
             );
-            continue;
+            continue; // Skip to the next profile
           }
 
           try {
@@ -152,50 +145,5 @@ export const builderProfileWorker = async (
       lockDuration: 1200000, // 20 minutes
       lockRenewTime: 600000, // 10 minutes (half of lockDuration)
     }
-  );
-};
-
-const getUniqueRootParentUrls = (casts: FarcasterCast[]): string[] => {
-  return Array.from(
-    new Set(
-      casts
-        .filter(
-          (cast) => cast.parentHash === null && cast.rootParentUrl !== null
-        )
-        .map((cast) => cast.rootParentUrl)
-        .filter(
-          (url): url is string =>
-            url !== undefined &&
-            url !== null &&
-            safeTrim(url) !== '' &&
-            safeTrim(url) !== '""'
-        )
-    )
-  );
-};
-
-const cleanTextForEmbedding = (text: string) => {
-  return (
-    text
-      // Remove actual newline and carriage return characters
-      .replace(/(\r\n|\n|\r)/g, ' ')
-      // Replace escaped newline and carriage return sequences with a space
-      .replace(/\\n|\\r/g, ' ')
-      // Remove markdown images
-      .replace(/!\[[^\]]*\]\([^\)]*\)/g, '')
-      // Remove markdown headings
-      .replace(/^#+\s/gm, '')
-      // Remove markdown list markers (- or *)
-      .replace(/^[-*]\s/gm, '')
-      // Remove HTML tags if any
-      .replace(/<[^>]+>/g, ' ')
-      // Normalize multiple spaces to a single space
-      .replace(/\s+/g, ' ')
-      // Remove unnecessary characters like # and *
-      .replace(/[#*]/g, ' ')
-      // Trim leading and trailing whitespace
-      .trim()
-      // Convert to lowercase
-      .toLowerCase()
   );
 };
