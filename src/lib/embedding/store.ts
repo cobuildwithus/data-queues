@@ -31,5 +31,12 @@ export const storeEmbedding = async (
       externalId: job.externalId,
       externalUrl: job.externalUrl,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [embeddings.contentHash],
+      set: {
+        embedding: embedding,
+        version: EMBEDDING_CACHE_VERSION,
+        url_summaries: urlSummaries,
+      },
+    });
 };
