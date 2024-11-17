@@ -48,29 +48,6 @@ async function cacheImageDescription(
   log('Image description cached successfully', job);
 }
 
-async function getImageSize(imageUrl: string, job: Job): Promise<number> {
-  try {
-    const response = await fetch(imageUrl, {
-      method: 'HEAD',
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-          '(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to get image size: ${response.statusText}`);
-    }
-
-    const contentLength = response.headers.get('Content-Length');
-    return contentLength ? parseInt(contentLength, 10) : -1;
-  } catch (error: any) {
-    log(`Error getting image size: ${error.message}`, job);
-    return -1;
-  }
-}
-
 async function downloadImageToBuffer(
   imageUrl: string,
   job: Job
@@ -201,14 +178,6 @@ export async function describeImage(
     .slice(2)}.tmp`;
 
   try {
-    // Check image size before downloading
-    const imageSize = await getImageSize(imageUrl, job);
-    const maxSizeInBytes = 25 * 1024 * 1024; // 25 MB limit
-    if (imageSize > maxSizeInBytes) {
-      log(`Image size ${imageSize} exceeds maximum allowed size`, job);
-      return null;
-    }
-
     log('Starting image download and processing', job);
 
     // Download image to buffer with retry logic
@@ -223,7 +192,8 @@ export async function describeImage(
 
     // Resize image using sharp
     const resizedImageBuffer = await sharp(imageBuffer)
-      .resize({ width: 800 }) // Adjust width as needed
+      .resize({ width: 800 })
+      .jpeg({ quality: 70 })
       .toBuffer();
 
     // Determine MIME type
@@ -231,8 +201,15 @@ export async function describeImage(
     const metadata = await image.metadata();
     const mimeType = `image/${metadata.format}`;
 
-    // Write buffer to temp file
+    // Check image size using sharp
+    const imageSize = resizedImageBuffer.byteLength;
+    const maxSizeInBytes = 25 * 1024 * 1024; // 25 MB limit
+    if (imageSize > maxSizeInBytes) {
+      log(`Image size ${imageSize} exceeds maximum allowed size`, job);
+      return null;
+    }
 
+    // Write buffer to temp file
     await fsPromises.writeFile(
       tempFilePath,
       new Uint8Array(resizedImageBuffer)
