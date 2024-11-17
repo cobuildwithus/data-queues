@@ -2,6 +2,76 @@ import { RedisClientType } from 'redis';
 import { CastWithParent } from '../../database/queries';
 import { Job } from 'bullmq';
 import { getAndSaveEmbedSummaries } from '../multi-media/get-and-save-summaries';
+import { cacheResult } from '../cache/cacheResult';
+import { googleAiStudioModel } from '../ai';
+import { anthropicModel } from '../ai';
+import { log } from '../queueLib';
+import { getCachedResult } from '../cache/cacheResult';
+import { openAIModel, retryAiCallWithBackoff } from '../ai';
+import { generateText } from 'ai';
+import { builderProfilePrompt } from '../prompts/builder-profile';
+import crypto from 'crypto';
+
+export async function summarizeAnalysis(
+  combinedAnalysis: string,
+  job: Job,
+  redisClient: RedisClientType
+): Promise<string> {
+  log(`Summarizing analysis for multiple chunks of data`, job);
+
+  // Check cache first using hash of combined analysis
+  const cacheKey = `summary-analysis-v1:${crypto
+    .createHash('sha256')
+    .update(combinedAnalysis)
+    .digest('hex')}`;
+
+  const existingSummary = await getCachedResult<string>(
+    redisClient,
+    cacheKey,
+    ''
+  );
+  if (existingSummary) {
+    log(`Found cached summary analysis`, job);
+    return existingSummary;
+  }
+
+  // Combine partial summaries into the final summary
+  const response = await retryAiCallWithBackoff(
+    (model) => () =>
+      generateText({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: `Combine the following summaries into one comprehensive builder profile.
+            The chunks are ordered from oldest to newest, and the newer chunks might have less information, but are more important because they are more recent.
+            Do not mention that you are combining the chunks or otherwise summarizing them in your response, just analyze the data and return it in the format requested defined by the prompt below:
+${builderProfilePrompt()}`,
+          },
+          {
+            role: 'user',
+            content: `Here are the summaries:\n\n${combinedAnalysis}`,
+          },
+        ],
+        maxTokens: 4096,
+      }),
+    job,
+    [anthropicModel, openAIModel, googleAiStudioModel]
+  );
+
+  const finalSummary = response.text;
+
+  // Cache the summary
+  await cacheResult<string>(
+    redisClient,
+    cacheKey,
+    '',
+    async () => finalSummary,
+    true
+  );
+
+  return finalSummary;
+}
 
 const hasNoEmbeds = (cast: CastWithParent) => {
   if (!cast.embeds) {

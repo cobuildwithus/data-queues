@@ -6,13 +6,14 @@ import { CastWithParent } from '../../database/queries';
 import { builderProfilePrompt } from '../prompts/builder-profile';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
 import crypto from 'crypto';
-import { filterCasts, generateCastText } from './utils';
+import { filterCasts, summarizeAnalysis } from './utils';
 import {
   googleAiStudioModel,
   openAIModel,
   anthropicModel,
   retryAiCallWithBackoff,
 } from '../ai';
+import { processCasts } from './batch-process-casts';
 
 const CASTS_PER_CHUNK = 650; // Fixed number of casts per chunk
 
@@ -27,41 +28,8 @@ export async function generateBuilderProfile(
   // Filter out casts that are not original posts and have no meaningful content
   const sortedCasts = filterCasts(casts);
 
-  const castsText: string[] = [];
-  const BATCH_SIZE = 1500;
-
-  // Generate text representations of casts in batches
-  for (let i = 0; i < sortedCasts.length; i += BATCH_SIZE) {
-    const batch = sortedCasts.slice(i, i + BATCH_SIZE);
-    log(
-      `Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(
-        sortedCasts.length / BATCH_SIZE
-      )}`,
-      job
-    );
-
-    const batchTexts = await Promise.all(
-      batch.map(async (cast) => {
-        if (!cast.timestamp || (!cast.text && !cast.embeds)) {
-          console.error('Cast timestamp is required', cast);
-          return null;
-        }
-        return generateCastText(cast, redisClient, job);
-      })
-    );
-
-    castsText.push(
-      ...batchTexts.filter((text): text is string => text !== null)
-    );
-  }
-
   // Sanitize and filter empty entries
-  const sanitizedCastsText = castsText.filter((text) => text.trim() !== '');
-
-  if (sanitizedCastsText.length === 0) {
-    log('No messages to analyze', job);
-    return 'No messages available for analysis.';
-  }
+  const sanitizedCastsText = await processCasts(sortedCasts, redisClient, job);
 
   // Split casts into fixed-size chunks
   const totalCasts = sanitizedCastsText.length;
@@ -150,66 +118,6 @@ export async function generateBuilderProfile(
     combinedAnalysis,
     job,
     redisClient
-  );
-
-  return finalSummary;
-}
-async function summarizeAnalysis(
-  combinedAnalysis: string,
-  job: Job,
-  redisClient: RedisClientType
-): Promise<string> {
-  log(`Summarizing analysis for multiple chunks of data`, job);
-
-  // Check cache first using hash of combined analysis
-  const cacheKey = `summary-analysis-v1:${crypto
-    .createHash('sha256')
-    .update(combinedAnalysis)
-    .digest('hex')}`;
-
-  const existingSummary = await getCachedResult<string>(
-    redisClient,
-    cacheKey,
-    ''
-  );
-  if (existingSummary) {
-    log(`Found cached summary analysis`, job);
-    return existingSummary;
-  }
-
-  // Combine partial summaries into the final summary
-  const response = await retryAiCallWithBackoff(
-    (model) => () =>
-      generateText({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: `Combine the following summaries into one comprehensive builder profile.
-            The chunks are ordered from oldest to newest, and the newer chunks might have less information, but are more important because they are more recent.
-            Do not mention that you are combining the chunks or otherwise summarizing them in your response, just analyze the data and return it in the format requested defined by the prompt below:
-${builderProfilePrompt()}`,
-          },
-          {
-            role: 'user',
-            content: `Here are the summaries:\n\n${combinedAnalysis}`,
-          },
-        ],
-        maxTokens: 4096,
-      }),
-    job,
-    [anthropicModel, openAIModel, googleAiStudioModel]
-  );
-
-  const finalSummary = response.text;
-
-  // Cache the summary
-  await cacheResult<string>(
-    redisClient,
-    cacheKey,
-    '',
-    async () => finalSummary,
-    true
   );
 
   return finalSummary;
