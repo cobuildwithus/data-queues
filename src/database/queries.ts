@@ -43,14 +43,6 @@ export const getAllCastsWithParents = async (fid: number) => {
     )
     .leftJoin(profilesAlias, eq(parentCastsAlias.fid, profilesAlias.fid))
     .where(eq(farcasterCasts.fid, fid))
-    //   and(
-    //     eq(farcasterCasts.fid, fid),
-    //     sql`farcaster_casts.hash = ${Buffer.from(
-    //       '5f766833c078a6a05979cedae518b05fd597ed0f',
-    //       'hex'
-    //     )}`
-    //   )
-    // )
     .orderBy(asc(farcasterCasts.timestamp));
 
   return casts;
