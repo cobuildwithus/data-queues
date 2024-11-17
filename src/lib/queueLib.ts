@@ -4,9 +4,9 @@ import { db } from '../database/db';
 import { embeddings } from '../database/schema';
 import { createHash } from 'crypto';
 import OpenAI from 'openai';
-import { describeImage } from './multi-media/describe-image';
+import { describeImage } from './multi-media/image/describe-image';
 import { RedisClientType } from 'redis';
-import { describeVideo } from './multi-media/describe-video';
+import { describeVideo } from './multi-media/video/describe-video';
 import { safeTrim } from './builders/utils';
 
 const version = 21;

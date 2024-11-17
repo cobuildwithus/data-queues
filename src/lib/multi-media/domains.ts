@@ -25,6 +25,3 @@ export const imageDomains = [
   'arweave.net',
   'ar-io.net',
 ];
-
-export const imageRegex =
-  /(imagedelivery\/BXluQx4ige9GuW0Ia56BHw|BXluQx4ige9GuW0Ia56BHw)/;

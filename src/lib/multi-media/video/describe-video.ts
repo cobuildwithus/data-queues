@@ -6,12 +6,12 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { Job } from 'bullmq';
-import { log } from '../queueLib';
+import { log } from '../../queueLib';
 import { execSync } from 'child_process';
-import { cacheResult, getCachedResult } from '../cache/cacheResult';
+import { cacheResult, getCachedResult } from '../../cache/cacheResult';
 import { mkdirSync, existsSync } from 'fs';
 import { dirname } from 'path';
-import { videoDescriptionPrompt } from '../prompts/builder-profile';
+import { videoDescriptionPrompt } from '../../prompts/builder-profile';
 
 // Get paths to ffmpeg and ffprobe
 const ffmpegPath = execSync('which ffmpeg').toString().trim();
