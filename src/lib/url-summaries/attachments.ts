@@ -93,7 +93,7 @@ export async function saveUrlSummariesForCastHash(
   job: Job
 ) {
   if (!castHash) throw new Error('Cast hash is required');
-  if (castHash?.length !== 40) {
+  if (castHash?.length !== 42) {
     throw new Error('Cast hash is not valid');
   }
 
@@ -102,7 +102,12 @@ export async function saveUrlSummariesForCastHash(
   const d = await farcasterDb
     .update(farcasterCasts)
     .set({ embedSummaries: summaries })
-    .where(sql`farcaster_casts.hash = ${Buffer.from(castHash, 'hex')}`);
+    .where(
+      sql`farcaster_casts.hash = ${Buffer.from(
+        castHash.replace('0x', ''),
+        'hex'
+      )}`
+    );
 
   log(`Saved ${d.rowCount} embed summaries to db`, job);
 
