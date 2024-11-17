@@ -37,6 +37,14 @@ export const storeEmbedding = async (
         embedding: embedding,
         version: EMBEDDING_CACHE_VERSION,
         url_summaries: urlSummaries,
+        urls: job.urls,
+        groups: Array.from(
+          new Set(job.groups.map((group) => group.toLowerCase()))
+        ),
+        users: Array.from(new Set(job.users.map((user) => user.toLowerCase()))),
+        tags: Array.from(new Set(job.tags.map((tag) => tag.toLowerCase()))),
+        externalId: job.externalId,
+        externalUrl: job.externalUrl,
       },
     });
 };
