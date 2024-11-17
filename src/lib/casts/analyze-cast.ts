@@ -73,8 +73,6 @@ export async function analyzeCast(
     [openAIModel, googleAiStudioModel]
   );
 
-  log(JSON.stringify(object), job);
-
   const result: CastAnalysis = { ...object, castHash: data.castHash };
 
   // Cache the analysis
