@@ -9,34 +9,34 @@ export async function uploadAndWaitForProcessing(
   job: Job
 ) {
   // Upload temp file to Google
-  log('Uploading image to Google AI Studio', job);
+  log('Uploading file to Google AI Studio', job);
   const uploadResponse = await fileManager.uploadFile(tempFilePath, {
     mimeType,
-    displayName: 'Image to analyze',
+    displayName: 'File to analyze',
   });
-  log('Image uploaded successfully', job);
+  log('File uploaded successfully', job);
 
   // Check file state until processing is complete
-  log('Waiting for image processing to complete', job);
+  log('Waiting for file processing to complete', job);
   let file = await fileManager.getFile(uploadResponse.file.name);
   const maxRetries = 30; // e.g., wait for up to 5 minutes
   let retries = 0;
 
   while (file.state === 'PROCESSING' && retries < maxRetries) {
-    log('Image still processing, waiting 10 seconds...', job);
+    log('File still processing, waiting 10 seconds...', job);
     await new Promise((resolve) => setTimeout(resolve, 10000));
     file = await fileManager.getFile(uploadResponse.file.name);
     retries++;
   }
 
   if (file.state === 'FAILED') {
-    log('Image processing failed', job);
-    throw new Error('Image processing failed');
+    log('File processing failed', job);
+    throw new Error('File processing failed');
   } else if (file.state === 'PROCESSING') {
-    log('Image processing timed out', job);
-    throw new Error('Image processing timed out');
+    log('File processing timed out', job);
+    throw new Error('File processing timed out');
   }
 
-  log('Image processing completed successfully', job);
+  log('File processing completed successfully', job);
   return uploadResponse;
 }

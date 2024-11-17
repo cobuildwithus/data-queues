@@ -1,4 +1,3 @@
-import ffmpeg from 'fluent-ffmpeg';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { RedisClientType } from 'redis';
@@ -7,191 +6,18 @@ import path from 'path';
 import crypto from 'crypto';
 import { Job } from 'bullmq';
 import { log } from '../../queueLib';
-import { execSync } from 'child_process';
-import { cacheResult, getCachedResult } from '../../cache/cacheResult';
-import { mkdirSync, existsSync } from 'fs';
-import { dirname } from 'path';
 import { videoDescriptionPrompt } from '../../prompts/builder-profile';
-
-// Get paths to ffmpeg and ffprobe
-const ffmpegPath = execSync('which ffmpeg').toString().trim();
-const ffprobePath = execSync('which ffprobe').toString().trim();
-
-console.log('ffmpeg path:', ffmpegPath);
-console.log('ffprobe path:', ffprobePath);
-
-// Set the paths in fluent-ffmpeg
-ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobePath);
-
-if (!ffmpegPath) {
-  throw new Error('ffmpeg-static is required');
-}
-
-if (!ffprobePath) {
-  throw new Error('ffprobe-static is required');
-}
+import { downloadLowQualityVideo } from './utils';
+import { retryWithExponentialBackoff } from '../../retry/retry-fetch';
+import { cacheVideoDescription, getCachedVideoDescription } from './cache';
+import { uploadAndWaitForProcessing } from '../../google/ai-file-manager';
 
 if (!process.env.GOOGLE_AI_STUDIO_KEY) {
   throw new Error('GOOGLE_AI_STUDIO_KEY environment variable is required');
 }
 
-const VIDEO_DESCRIPTION_CACHE_PREFIX = 'ai-studio-video-description:';
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_STUDIO_KEY);
 const fileManager = new GoogleAIFileManager(process.env.GOOGLE_AI_STUDIO_KEY);
-
-async function getCachedVideoDescription(
-  redisClient: RedisClientType,
-  videoUrl: string,
-  job: Job
-): Promise<string | null> {
-  log(`Checking cache for video description: ${videoUrl}`, job);
-  return await getCachedResult<string>(
-    redisClient,
-    videoUrl,
-    VIDEO_DESCRIPTION_CACHE_PREFIX
-  );
-}
-
-async function cacheVideoDescription(
-  redisClient: RedisClientType,
-  videoUrl: string,
-  description: string,
-  job: Job
-): Promise<void> {
-  log(`Caching video description for: ${videoUrl}`, job);
-  await cacheResult(
-    redisClient,
-    videoUrl,
-    VIDEO_DESCRIPTION_CACHE_PREFIX,
-    async () => description
-  );
-  log('Video description cached successfully', job);
-}
-
-async function getLowestQualityStreamIndices(
-  url: string
-): Promise<{ videoIndex: number; audioIndex: number }> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(url, (err, metadata) => {
-      if (err) {
-        return reject(err);
-      }
-
-      const streams = metadata.streams;
-      if (!streams || streams.length === 0) {
-        return reject(new Error('No streams found in HLS stream'));
-      }
-
-      // Filter video and audio streams
-      const videoStreams = streams.filter((s) => s.codec_type === 'video');
-      const audioStreams = streams.filter((s) => s.codec_type === 'audio');
-
-      if (videoStreams.length === 0) {
-        return reject(new Error('No video streams found'));
-      }
-
-      // Sort video streams by bitrate to get lowest quality
-      videoStreams.sort(
-        (a, b) => Number(a.bit_rate || 0) - Number(b.bit_rate || 0)
-      );
-      const lowestVideoIndex = videoStreams[0].index;
-
-      // For audio, try to get lowest quality if available, otherwise -1
-      let lowestAudioIndex = -1;
-      if (audioStreams.length > 0) {
-        audioStreams.sort(
-          (a, b) => Number(a.bit_rate || 0) - Number(b.bit_rate || 0)
-        );
-        lowestAudioIndex = audioStreams[0].index;
-      }
-
-      resolve({
-        videoIndex: lowestVideoIndex,
-        audioIndex: lowestAudioIndex,
-      });
-    });
-  });
-}
-
-async function downloadLowQualityVideo(
-  url: string,
-  outputPath: string,
-  job: Job
-): Promise<void> {
-  log(`Downloading video from ${url} to ${outputPath}`, job);
-
-  // Ensure the output directory exists
-  const outputDir = dirname(outputPath);
-  if (!existsSync(outputDir)) {
-    mkdirSync(outputDir, { recursive: true });
-    console.log('Output directory created:', outputDir);
-  }
-
-  // Get the indices of the lowest quality video and audio streams
-  const { videoIndex, audioIndex } = await getLowestQualityStreamIndices(url);
-  log(
-    `Selected video stream index: ${videoIndex}, audio stream index: ${audioIndex}`,
-    job
-  );
-
-  return new Promise((resolve, reject) => {
-    try {
-      if (!ffmpegPath) {
-        throw new Error(
-          'ffmpeg-static is required but was not found in the system.'
-        );
-      }
-      const ffmpegCommand = ffmpeg(url)
-        .setFfmpegPath(ffmpegPath)
-        .addInputOption('-protocol_whitelist', 'http,https,tcp,tls')
-        .outputOptions('-c copy'); // Copy streams without re-encoding
-
-      // Map the selected video stream
-      ffmpegCommand.outputOptions('-map', `0:${videoIndex}`);
-
-      // Map the audio stream only if it exists
-      if (audioIndex !== -1) {
-        ffmpegCommand.outputOptions('-map', `0:${audioIndex}`);
-      }
-
-      ffmpegCommand
-        .output(outputPath)
-        .on('end', () => {
-          log('Video download complete', job);
-          resolve();
-        })
-        .on('error', (err) => {
-          log('Error downloading video:' + err, job);
-          reject(err);
-        })
-        .run();
-    } catch (err) {
-      log('Unexpected error during video download:' + err, job);
-      reject(err);
-    }
-  });
-}
-
-async function retryWithExponentialBackoff<T>(
-  fn: () => Promise<T>,
-  job: Job,
-  retries: number = 3,
-  delay: number = 1000
-): Promise<T> {
-  try {
-    return await fn();
-  } catch (error: any) {
-    const status = error?.status;
-    if (retries > 0 && (status === 503 || status >= 500)) {
-      log(`Retrying after ${delay} ms... (${retries} retries left)`, job);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return retryWithExponentialBackoff(fn, job, retries - 1, delay * 2);
-    } else {
-      throw error;
-    }
-  }
-}
 
 /**
  * Analyzes a video from a URL and returns a description.
@@ -231,42 +57,19 @@ export async function describeVideo(
     // Download video using ffmpeg
     await downloadLowQualityVideo(videoUrl, localFilePath, job);
 
-    // Upload video file to Google
-    log('Uploading video to Google AI Studio', job);
-    const uploadResponse = await fileManager.uploadFile(localFilePath, {
-      mimeType: 'video/mp4',
-      displayName: 'Video to analyze',
-    });
-    log('Video uploaded successfully', job);
+    // Upload video and wait for processing
+    const uploadResponse = await uploadAndWaitForProcessing(
+      fileManager,
+      localFilePath,
+      'video/mp4',
+      job
+    );
 
     // Clean up local video file after upload
     if (fs.existsSync(localFilePath)) {
       fs.unlinkSync(localFilePath);
       log('Deleted local video file after upload', job);
     }
-
-    // Check file state until processing is complete
-    log('Waiting for video processing to complete', job);
-    let file = await fileManager.getFile(uploadResponse.file.name);
-    const maxRetries = 30; // e.g., wait for up to 5 minutes
-    let retries = 0;
-
-    while (file.state === 'PROCESSING' && retries < maxRetries) {
-      log('Video still processing, waiting 10 seconds...', job);
-      await new Promise((resolve) => setTimeout(resolve, 10000));
-      file = await fileManager.getFile(uploadResponse.file.name);
-      retries++;
-    }
-
-    if (file.state === 'FAILED') {
-      log('Video processing failed', job);
-      throw new Error('Video processing failed');
-    } else if (file.state === 'PROCESSING') {
-      log('Video processing timed out', job);
-      throw new Error('Video processing timed out');
-    }
-
-    log('Video processing completed successfully', job);
 
     // Generate description using Gemini Flash with retries
     log('Generating video description with Gemini Flash', job);
