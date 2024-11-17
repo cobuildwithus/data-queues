@@ -93,7 +93,7 @@ export async function saveUrlSummariesForCastHash(
   job: Job
 ) {
   if (!castHash) throw new Error('Cast hash is required');
-  if (castHash?.length !== 42) {
+  if (castHash.length !== 42) {
     throw new Error(
       `Cast hash is not valid length: ${castHash}, ${castHash.length}`
     );

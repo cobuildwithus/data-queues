@@ -41,10 +41,6 @@ export const getEmbedding = async (
     console.log({ input, summaries, text, urls });
   }
 
-  console.log({ input });
-
-  throw new Error('test');
-
   const response = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: input,
