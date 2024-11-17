@@ -4,7 +4,7 @@ import { IsGrantUpdateJobBody } from '../../types/job';
 import { log } from '../helpers';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
-import { retryAiCallWithBackoff } from '../ai';
+import { anthropicModel, retryAiCallWithBackoff } from '../ai';
 import { googleAiStudioModel, openAIModel } from '../ai';
 import { cacheCastAnalysis, CastAnalysis } from './cache';
 import { getCachedCastAnalysis } from './cache';
@@ -70,7 +70,7 @@ export async function analyzeCast(
         maxTokens: 1500,
       }),
     job,
-    [openAIModel, googleAiStudioModel]
+    [anthropicModel, openAIModel, googleAiStudioModel]
   );
 
   const result: CastAnalysis = { ...object, castHash: data.castHash };
