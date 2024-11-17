@@ -24,7 +24,7 @@ export const validTypes = [
   'dispute',
   'draft-application',
   'builder-profile',
-];
+] as const;
 
 export interface IsGrantUpdateJobBody {
   castContent: string;

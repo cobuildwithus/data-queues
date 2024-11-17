@@ -2,6 +2,7 @@ import { db } from '../../database/db';
 import { embeddings } from '../../database/schema';
 import { JobBody } from '../../types/job';
 import { EMBEDDING_CACHE_VERSION } from './cache';
+import { eq, and } from 'drizzle-orm';
 
 // Store embedding in database
 export const storeEmbedding = async (
@@ -11,6 +12,12 @@ export const storeEmbedding = async (
   job: JobBody,
   contentHash: string
 ) => {
+  if (job.type === 'builder-profile') {
+    // we only want to store one builder profile per fid
+    // assumes externalId is fid
+    await deleteEmbeddingForBuilderProfile(job.externalId);
+  }
+
   await db
     .insert(embeddings)
     .values({
@@ -47,4 +54,16 @@ export const storeEmbedding = async (
         externalUrl: job.externalUrl,
       },
     });
+};
+
+// Delete embedding from database by external ID for builder profiles
+export const deleteEmbeddingForBuilderProfile = async (externalId: string) => {
+  await db
+    .delete(embeddings)
+    .where(
+      and(
+        eq(embeddings.type, 'builder-profile'),
+        eq(embeddings.externalId, externalId)
+      )
+    );
 };

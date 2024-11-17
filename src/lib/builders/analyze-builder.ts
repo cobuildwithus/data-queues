@@ -15,6 +15,7 @@ import {
 } from '../ai';
 import { processCasts } from './batch-process-casts';
 
+// DO NOT UPDATE OR WE WILL HAVE TO REGENERATE ALL THE CHUNKS
 const CASTS_PER_CHUNK = 650; // Fixed number of casts per chunk
 
 const BUILDER_CACHE_KEY = 'builder-profile-analyze-chunk:';
