@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { log } from '../../queueLib';
+import { log } from '../../helpers';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import ffmpeg from 'fluent-ffmpeg';

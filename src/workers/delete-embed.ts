@@ -3,8 +3,10 @@ import { DeletionJobBody } from '../types/job';
 import { embeddings } from '../database/schema';
 import { db } from '../database/db';
 import { and, eq } from 'drizzle-orm';
-import { updateJobProgress, log, contentHashPrefix } from '../lib/queueLib';
+import { log } from '../lib/helpers';
 import { RedisClientType } from 'redis';
+import { updateJobProgress } from '../lib/helpers';
+import { deleteContentHash } from '../lib/embedding/cache';
 
 export const deletionQueueWorker = async (
   queueName: string,
@@ -34,7 +36,7 @@ export const deletionQueueWorker = async (
         );
 
       // Delete from Redis
-      await redisClient.del(`${contentHashPrefix}${contentHash}`);
+      await deleteContentHash(redisClient, contentHash);
 
       await updateJobProgress(job, 'deletion', 100);
 

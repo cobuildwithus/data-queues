@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { Queue } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { FastifyAdapter } from '@bull-board/fastify';
@@ -47,4 +47,24 @@ export const handleError = (error: any, request: any, reply: any) => {
     validTypes: error.validTypes,
     statusCode: error.statusCode || 500,
   });
+};
+
+// Helper to update job progress
+export const updateJobProgress = async (
+  job: Job,
+  phase: string,
+  progress: number
+) => {
+  await job.updateProgress({
+    phase,
+    progress,
+  });
+};
+
+// Log function that console.logs and job logs
+export const log = (message: string, job: Job) => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log(message);
+  }
+  job.log(message);
 };

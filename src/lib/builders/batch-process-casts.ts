@@ -1,7 +1,7 @@
 import { CastWithParent } from '../../database/queries';
 import { Job } from 'bullmq';
 import { RedisClientType } from 'redis';
-import { log } from '../queueLib';
+import { log } from '../helpers';
 import { generateCastText, safeTrim } from './utils';
 
 export const CAST_BATCH_SIZE = 1500;

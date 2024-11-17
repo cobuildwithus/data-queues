@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { log } from '../../queueLib';
+import { log } from '../../helpers';
 import { RedisClientType } from 'redis';
 import { cacheResult, getCachedResult } from '../../cache/cacheResult';
 

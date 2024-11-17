@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
 import { getGrantUpdateCastPrompt } from '../prompts/grant-update-cast';
-import { log } from '../queueLib';
+import { log } from '../helpers';
 
 export function getMessageContent(
   data: {

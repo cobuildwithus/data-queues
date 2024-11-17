@@ -1,15 +1,15 @@
 import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
 import { JobBody } from '../types/job';
-import {
-  updateJobProgress,
-  log,
-  getEmbedding,
-  storeEmbedding,
-  handleContentHash,
-  storeJobId,
-} from '../lib/queueLib';
+import { getEmbedding } from '../lib/embedding/get';
+import { log } from '../lib/helpers';
 import OpenAI from 'openai';
 import { RedisClientType } from 'redis';
+import { updateJobProgress } from '../lib/helpers';
+import {
+  handleContentHash,
+  storeEmbeddingJobRun,
+} from '../lib/embedding/cache';
+import { storeEmbedding } from '../lib/embedding/store';
 
 export const bulkEmbeddingsWorker = async (
   queueName: string,
@@ -55,6 +55,8 @@ export const bulkEmbeddingsWorker = async (
           openai,
           item.content,
           jobs,
+          item.type,
+          item.externalId,
           item.urls
         );
 
@@ -67,7 +69,7 @@ export const bulkEmbeddingsWorker = async (
 
         await storeEmbedding(embedding, input, urlSummaries, item, contentHash);
 
-        await storeJobId(redisClient, jobId, contentHash);
+        await storeEmbeddingJobRun(redisClient, jobId, contentHash);
 
         results.push({
           jobId,

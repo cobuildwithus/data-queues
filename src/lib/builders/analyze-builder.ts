@@ -1,5 +1,5 @@
 import { generateText } from 'ai';
-import { log } from '../queueLib';
+import { log } from '../helpers';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
 import { CastWithParent } from '../../database/queries';

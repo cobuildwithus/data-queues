@@ -1,7 +1,7 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { IsGrantUpdateJobBody } from '../../types/job';
-import { fetchEmbeddingSummaries, log } from '../queueLib';
+import { log } from '../helpers';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
 import { retryAiCallWithBackoff } from '../ai';
@@ -9,6 +9,7 @@ import { googleAiStudioModel, openAIModel } from '../ai';
 import { cacheCastAnalysis, CastAnalysis } from './cache';
 import { getCachedCastAnalysis } from './cache';
 import { getMessageContent } from './utils';
+import { saveUrlSummariesForCastHash } from '../url-summaries/attachments';
 
 export async function analyzeCast(
   redisClient: RedisClientType,
@@ -30,7 +31,12 @@ export async function analyzeCast(
     return cachedAnalysis;
   }
 
-  const summaries = await fetchEmbeddingSummaries(redisClient, job, data.urls);
+  const summaries = await saveUrlSummariesForCastHash(
+    data.castHash,
+    data.urls,
+    redisClient,
+    job
+  );
 
   const { object } = await retryAiCallWithBackoff(
     (model) => () =>

@@ -18,6 +18,7 @@ Include information on subjects, actions, settings, emotions, and any inferred m
 If you see a person wearing square glasses, especially if they are red, they might be called noggles, so mention the word noggles if it's relevant.
 Make sure to pay attention to glasses and these details, but you don't need to mention them in the description if they are not present in the image.
 The information you share will be fed to an embedding model, so don't use new lines or other formatting. Make it all lowercase.
+Don't forget to include the word noggles if you see big square glasses.
 DO NOT return anything if you cannot access the image or it is otherwise unavilable. Just return an empty string.
 Do not return JSON, just return the text.
 Be thorough and detailed in your analysis of the image, what's going on, who is in the image, what they are doing, etc.`;

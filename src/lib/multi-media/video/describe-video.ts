@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { Job } from 'bullmq';
-import { log } from '../../queueLib';
+import { log } from '../../helpers';
 import { videoDescriptionPrompt } from '../../prompts/media-descriptions';
 import { downloadLowQualityVideo } from './utils';
 import { retryWithExponentialBackoff } from '../../retry/retry-fetch';

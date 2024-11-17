@@ -1,6 +1,6 @@
 import { GoogleAIFileManager } from '@google/generative-ai/dist/server/server';
 import { Job } from 'bullmq';
-import { log } from '../queueLib';
+import { log } from '../helpers';
 
 export async function uploadAndWaitForProcessing(
   fileManager: GoogleAIFileManager,

@@ -1,6 +1,6 @@
 import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
 import { IsGrantUpdateJobBody } from '../types/job';
-import { log } from '../lib/queueLib';
+import { log } from '../lib/helpers';
 import { analyzeCast } from '../lib/casts/analyze-cast';
 import { RedisClientType } from 'redis';
 import { farcasterCasts } from '../database/farcaster-schema';

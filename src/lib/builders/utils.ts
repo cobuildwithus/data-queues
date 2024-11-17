@@ -1,11 +1,11 @@
 import { RedisClientType } from 'redis';
 import { CastWithParent } from '../../database/queries';
 import { Job } from 'bullmq';
-import { getAndSaveEmbedSummaries } from '../multi-media/get-and-save-summaries';
+import { getAndSaveUrlSummaries } from '../url-summaries/attachments';
 import { cacheResult } from '../cache/cacheResult';
 import { googleAiStudioModel } from '../ai';
 import { anthropicModel } from '../ai';
-import { log } from '../queueLib';
+import { log } from '../helpers';
 import { getCachedResult } from '../cache/cacheResult';
 import { openAIModel, retryAiCallWithBackoff } from '../ai';
 import { generateText } from 'ai';
@@ -107,13 +107,21 @@ export async function generateCastText(
     throw new Error('Cast timestamp is required');
   }
 
-  const embedSummaries = await getAndSaveEmbedSummaries(cast, redisClient, job);
+  const embedSummaries = await getAndSaveUrlSummaries(
+    cast.embeds,
+    cast.embedSummaries,
+    cast.id,
+    redisClient,
+    job
+  );
 
   let parentEmbedSummaries: string[] = [];
 
-  if (cast.parentCast) {
-    parentEmbedSummaries = await getAndSaveEmbedSummaries(
-      cast.parentCast,
+  if (cast.parentCast && cast.parentCast.id) {
+    parentEmbedSummaries = await getAndSaveUrlSummaries(
+      cast.parentCast.embeds,
+      cast.parentCast.embedSummaries,
+      cast.parentCast.id,
       redisClient,
       job
     );

@@ -3,7 +3,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { LanguageModelV1 } from 'ai';
 import { Job } from 'bullmq';
-import { log } from './queueLib';
+import { log } from './helpers';
 
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;

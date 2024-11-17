@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
 import fs from 'fs';
 import { RedisClientType } from 'redis';
-import { log } from '../../queueLib';
+import { log } from '../../helpers';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { imageDescriptionPrompt } from '../../prompts/media-descriptions';

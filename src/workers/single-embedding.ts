@@ -1,16 +1,15 @@
 import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
 import { JobBody } from '../types/job';
+import { getEmbedding } from '../lib/embedding/get';
+import { log } from '../lib/helpers';
+import { updateJobProgress } from '../lib/helpers';
 import {
-  updateJobProgress,
-  log,
-  getEmbedding,
-  storeEmbedding,
   handleContentHash,
-  storeJobId,
-} from '../lib/queueLib';
-
+  storeEmbeddingJobRun,
+} from '../lib/embedding/cache';
 import OpenAI from 'openai';
 import { RedisClientType } from 'redis';
+import { storeEmbedding } from '../lib/embedding/store';
 
 export const singleEmbeddingWorker = async (
   queueName: string,
@@ -53,6 +52,8 @@ export const singleEmbeddingWorker = async (
         openai,
         data.content,
         job,
+        data.type,
+        data.externalId,
         data.urls
       );
       log(`Generated embedding with ${embedding.length} dimensions`, job);
@@ -63,7 +64,7 @@ export const singleEmbeddingWorker = async (
 
       await updateJobProgress(job, 'redis', 0);
 
-      await storeJobId(redisClient, jobId, contentHash);
+      await storeEmbeddingJobRun(redisClient, jobId, contentHash);
 
       await updateJobProgress(job, 'redis', 100);
 

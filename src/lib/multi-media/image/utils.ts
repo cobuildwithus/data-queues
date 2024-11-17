@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { log } from '../../queueLib';
+import { log } from '../../helpers';
 import { imageDomains } from '../domains';
 import sharp from 'sharp';
 import { retryWithExponentialBackoff } from '../../retry/retry-fetch';

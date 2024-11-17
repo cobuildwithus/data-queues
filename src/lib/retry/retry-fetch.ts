@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { log } from '../queueLib';
+import { log } from '../helpers';
 
 export async function retryWithExponentialBackoff<T>(
   fn: () => Promise<T>,

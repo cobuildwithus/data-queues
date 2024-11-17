@@ -1,6 +1,6 @@
 import { Worker, Job, RedisOptions, ClusterOptions, Queue } from 'bullmq';
 import { BuilderProfileJobBody, JobBody } from '../types/job';
-import { log } from '../lib/queueLib';
+import { log } from '../lib/helpers';
 import { RedisClientType } from 'redis';
 import { generateBuilderProfile } from '../lib/builders/analyze-builder';
 import {
