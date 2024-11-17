@@ -34,7 +34,7 @@ export const anthropicModel = anthropic('claude-3-5-sonnet-20241022');
 export const openAIModel = openai('gpt-4o');
 export const googleAiStudioModel = googleAiStudio('gemini-1.5-pro');
 
-export async function retryWithExponentialBackoff<T>(
+export async function retryAiCallWithBackoff<T>(
   fnFactory: (model: any) => () => Promise<T>,
   job: Job,
   models: LanguageModelV1[],
@@ -76,7 +76,7 @@ export async function retryWithExponentialBackoff<T>(
         ].toString()} due to rate limit`,
         job
       );
-      return retryWithExponentialBackoff(
+      return retryAiCallWithBackoff(
         fnFactory,
         job,
         models,
@@ -88,7 +88,7 @@ export async function retryWithExponentialBackoff<T>(
       const retryDelay = isRateLimitError(error) ? delay * 4 : delay * 2;
       log(`Retrying after ${retryDelay} ms with model ${currentModel}...`, job);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
-      return retryWithExponentialBackoff(
+      return retryAiCallWithBackoff(
         fnFactory,
         job,
         models,

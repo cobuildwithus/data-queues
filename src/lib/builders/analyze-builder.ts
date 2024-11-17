@@ -11,7 +11,7 @@ import {
   googleAiStudioModel,
   openAIModel,
   anthropicModel,
-  retryWithExponentialBackoff,
+  retryAiCallWithBackoff,
 } from '../ai';
 
 const CASTS_PER_CHUNK = 650; // Fixed number of casts per chunk
@@ -101,7 +101,7 @@ export async function generateBuilderProfile(
     log(`Analyzing chunk ${i + 1} of ${chunks.length}`, job);
     // Define models to try in order
 
-    const response = await retryWithExponentialBackoff(
+    const response = await retryAiCallWithBackoff(
       (model) => () =>
         generateText({
           model,
@@ -178,7 +178,7 @@ async function summarizeAnalysis(
   }
 
   // Combine partial summaries into the final summary
-  const response = await retryWithExponentialBackoff(
+  const response = await retryAiCallWithBackoff(
     (model) => () =>
       generateText({
         model,

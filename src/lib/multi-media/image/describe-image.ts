@@ -4,7 +4,7 @@ import { RedisClientType } from 'redis';
 import { log } from '../../queueLib';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
-import { imageDescriptionPrompt } from '../../prompts/builder-profile';
+import { imageDescriptionPrompt } from '../../prompts/media-descriptions';
 import { cacheImageDescription, getCachedImageDescription } from './cache';
 import { downloadAndProcessImage, getImageUrl } from './utils';
 import { uploadAndWaitForProcessing } from '../../google/ai-file-manager';

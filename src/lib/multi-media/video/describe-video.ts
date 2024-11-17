@@ -6,7 +6,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { Job } from 'bullmq';
 import { log } from '../../queueLib';
-import { videoDescriptionPrompt } from '../../prompts/builder-profile';
+import { videoDescriptionPrompt } from '../../prompts/media-descriptions';
 import { downloadLowQualityVideo } from './utils';
 import { retryWithExponentialBackoff } from '../../retry/retry-fetch';
 import { cacheVideoDescription, getCachedVideoDescription } from './cache';
