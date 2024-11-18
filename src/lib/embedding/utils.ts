@@ -14,6 +14,8 @@ export const getContentHash = async (
 };
 
 export const cleanTextForEmbedding = (text: string) => {
+  if (!text) return '';
+
   return (
     text
       // Remove actual newline and carriage return characters

@@ -80,6 +80,11 @@ export const builderProfileWorker = async (
               );
             }
 
+            if (!casts.length) {
+              log(`No casts found for FID: ${profile.fid}, skipping`, job);
+              continue;
+            }
+
             log(`Analyzing ${casts.length} casts for FID: ${profile.fid}`, job);
 
             // Generate builder profile analysis
@@ -89,7 +94,9 @@ export const builderProfileWorker = async (
               job
             );
 
-            console.log({ analysis });
+            if (!analysis) {
+              throw new Error(`No analysis found for FID: ${profile.fid}`);
+            }
 
             log(`Generated builder profile for FID: ${profile.fid}`, job);
 
