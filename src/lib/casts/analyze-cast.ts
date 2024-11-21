@@ -65,26 +65,14 @@ export async function analyzeCast(
             content: [
               {
                 type: 'text',
-                text: `Cast Content: ${
-                  data.castContent || 'NO CAST CONTENT PROVIDED'
-                }
-
-Grant Details:
-Grant ID: ${data.grantId}
-Description: ${data.grantDescription}
-Parent Flow Description: ${data.parentFlowDescription}
-Pay special attention to the following attachments posted by the user. 
-The attachments are either videos or images, and you should use them to determine if the cast is a grant update.
-They are described below:
-${
-  summaries.length
-    ? `The update contains the following attachments posted by the user: ${summaries.join(
-        ', '
-      )}`
-    : 'The update contains no attachments'
-}
-
-Builder Profile: ${builderProfile?.content}`,
+                text: getTextFromCastContent(
+                  data.castContent,
+                  data.grantId,
+                  data.grantDescription,
+                  data.parentFlowDescription,
+                  summaries,
+                  builderProfile
+                ),
               },
             ],
           },
@@ -101,4 +89,34 @@ Builder Profile: ${builderProfile?.content}`,
   await cacheCastAnalysis(redisClient, data.castHash, data.grantId, result);
 
   return result;
+}
+
+function getTextFromCastContent(
+  castContent: string,
+  grantId: string,
+  grantDescription: string,
+  parentFlowDescription: string,
+  summaries: string[],
+  builderProfile: { content: string | null }
+): string {
+  const prompt = `Cast Content: ${castContent || 'NO CAST CONTENT PROVIDED'}
+
+Grant Details:
+Grant ID: ${grantId}
+Description: ${grantDescription}
+Parent Flow Description: ${parentFlowDescription}
+Pay special attention to the following attachments posted by the user. 
+The attachments are either videos or images, and you should use them to determine if the cast is a grant update.
+They are described below:
+${
+  summaries.length
+    ? `The update contains the following attachments posted by the user: ${summaries.join(', ')}`
+    : 'The update contains no attachments'
+}
+
+Builder Profile: ${builderProfile?.content}`;
+
+  console.log(prompt);
+
+  return prompt;
 }
