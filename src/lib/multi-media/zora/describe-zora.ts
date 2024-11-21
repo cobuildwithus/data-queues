@@ -17,7 +17,7 @@ import {
   getZoraOwnerProfile,
 } from './creator-profile';
 import { storeZoraContent } from './store';
-import { getZoraMetadata } from './get-metadata';
+import { getZoraTokenMetadata } from './get-metadata';
 
 /**
  * Describes Zora NFT content by analyzing its media
@@ -29,15 +29,15 @@ export async function describeZora(
 ): Promise<string | null> {
   try {
     // Parse Zora URL
-    const parsed = parseZoraUrl(zoraUrl);
+    const parsed = parseZoraUrl(zoraUrl, job);
     if (!parsed) {
       log(`Invalid Zora URL format: ${zoraUrl}`, job);
       return null;
     }
 
-    const { contractAddress, tokenId } = parsed;
+    const { contractAddress, tokenId, network } = parsed;
 
-    const cachedMetadata = await getZoraMetadata(contractAddress, tokenId);
+    const cachedMetadata = await getZoraTokenMetadata(contractAddress, tokenId);
 
     if (cachedMetadata && cachedMetadata.contentAiDescription) {
       log('Found cached Zora metadata', job);
@@ -60,7 +60,12 @@ export async function describeZora(
     }
 
     // Fetch metadata
-    const metadata = await fetchTokenMetadata(contractAddress, tokenId, job);
+    const metadata = await fetchTokenMetadata(
+      contractAddress,
+      tokenId,
+      network,
+      job
+    );
     if (!metadata?.content) {
       log('No token metadata found', job);
       throw new Error(`No token metadata found for Zora url: ${zoraUrl}`);
@@ -80,10 +85,11 @@ export async function describeZora(
       getZoraCreatorRewardRecipientProfile(
         contractAddress,
         tokenId,
+        network,
         job,
         redisClient
       ),
-      getZoraOwnerProfile(contractAddress, job, redisClient),
+      getZoraOwnerProfile(contractAddress, network, job, redisClient),
     ]);
 
     if (!mediaUrl) {

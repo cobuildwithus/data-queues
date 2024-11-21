@@ -4,7 +4,7 @@ import { RedisClientType } from 'redis';
 import { getEnsName } from '../../ens/get-ens-name';
 import { getFarcasterProfileByAddress } from '../../../database/queries/profiles/get-profile';
 import { log } from '../../helpers';
-import { baseClient } from '../../viem/client';
+import { getClient, SupportedNetwork } from '../../viem/client';
 import { zoraCreator1155ImplAbi } from '../../../generated';
 import { getOpenGraphData, OpenGraphData } from '../../open-graph/og-data';
 
@@ -46,12 +46,14 @@ async function getCreatorIdentifiers(
 export async function getZoraCreatorRewardRecipientProfile(
   contractAddress: string,
   tokenId: string,
+  network: SupportedNetwork,
   job: Job,
   redisClient: RedisClientType
 ): Promise<CreatorProfile | null> {
   try {
+    const client = getClient(network);
     // Get creator address from contract
-    const creatorAddress = await baseClient.readContract({
+    const creatorAddress = await client.readContract({
       address: contractAddress as `0x${string}`,
       abi: zoraCreator1155ImplAbi,
       functionName: 'getCreatorRewardRecipient',
@@ -79,12 +81,14 @@ export async function getZoraCreatorRewardRecipientProfile(
  */
 export async function getZoraOwnerProfile(
   contractAddress: string,
+  network: SupportedNetwork,
   job: Job,
   redisClient: RedisClientType
 ): Promise<CreatorProfile | null> {
   try {
+    const client = getClient(network);
     // Get owner address from contract
-    const ownerAddress = await baseClient.readContract({
+    const ownerAddress = await client.readContract({
       address: contractAddress as `0x${string}`,
       abi: zoraCreator1155ImplAbi,
       functionName: 'owner',

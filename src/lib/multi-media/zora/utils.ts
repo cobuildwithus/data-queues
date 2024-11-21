@@ -4,7 +4,11 @@ import { retryWithExponentialBackoff } from '../../retry/retry-fetch';
 import { log } from '../../helpers';
 import https from 'https';
 import { pinByHash } from '../pinata/pin-file';
-import { baseClient } from '../../viem/client';
+import {
+  getClient,
+  SUPPORTED_NETWORKS,
+  SupportedNetwork,
+} from '../../viem/client';
 import { fetchFromGateway } from '../pinata/fetch-file';
 import { CreatorProfile } from './creator-profile';
 
@@ -29,32 +33,46 @@ function createHttpsAgent() {
 }
 
 export function getMediaType(mime: string) {
+  if (mime.startsWith('image/gif')) return 'video';
   if (mime.startsWith('image/')) return 'image';
   if (mime.startsWith('video/')) return 'video';
   return null;
 }
 
 /**
- * Extracts contract address and token ID from a Zora URL
+ * Extracts contract address, token ID and network from a Zora URL
  */
 export function parseZoraUrl(
-  url: string
-): { contractAddress: string; tokenId: string } | null {
+  url: string,
+  job: Job
+): {
+  contractAddress: string;
+  tokenId: string;
+  network: SupportedNetwork;
+} | null {
   try {
     // Handle URLs with query parameters
     const urlWithoutParams = url.split('?')[0];
 
     // Match both with and without protocol/www
     const match = urlWithoutParams.match(
-      /(?:https?:\/\/)?(?:www\.)?zora\.co\/collect\/\w+:(\w+)\/(\d+)/
+      /(?:https?:\/\/)?(?:www\.)?zora\.co\/collect\/([^:]+):(\w+)\/(\d+)/
     );
 
     if (!match) return null;
+
+    let network = match[1].toLowerCase();
+    if (!SUPPORTED_NETWORKS.includes(network as SupportedNetwork)) {
+      return null;
+    }
+
     return {
-      contractAddress: match[1],
-      tokenId: match[2],
+      contractAddress: match[2],
+      tokenId: match[3],
+      network: network as SupportedNetwork,
     };
-  } catch (error) {
+  } catch (error: any) {
+    log(`Error parsing Zora URL: ${error.message}`, job);
     return null;
   }
 }
@@ -106,10 +124,13 @@ export const getPopulatedDescription = (
 export async function fetchTokenMetadata(
   contractAddress: string,
   tokenId: string,
+  network: SupportedNetwork,
   job: Job
 ): Promise<{ url: string; content: TokenMetadata } | null> {
   try {
-    const uri = await baseClient.readContract({
+    const client = getClient(network);
+
+    const uri = await client.readContract({
       address: contractAddress as `0x${string}`,
       abi: zoraCreator1155ImplAbi,
       functionName: 'uri',

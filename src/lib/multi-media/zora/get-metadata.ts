@@ -5,7 +5,7 @@ import { eq, and } from 'drizzle-orm';
 /**
  * Gets Zora NFT metadata from the database if it exists
  */
-export async function getZoraMetadata(
+export async function getZoraTokenMetadata(
   contractAddress: string,
   tokenId: string
 ) {
