@@ -5,7 +5,6 @@ import { describeImage } from '../image/describe-image';
 import { describeVideo } from '../video/describe-video';
 import {
   fetchTokenMetadata,
-  fetchZoraContent,
   getMediaType,
   getPopulatedDescription,
   getUsername,

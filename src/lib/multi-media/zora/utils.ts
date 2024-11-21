@@ -64,10 +64,18 @@ export function parseZoraUrl(
  */
 export function getUsername(profile?: CreatorProfile | null): string {
   if (!profile) return '';
+
+  // Check if ogTitle looks like a shortened ETH address (0x1234...5678)
+  const isShortAddress = profile.openGraphData?.ogTitle?.match(
+    /^0x[a-fA-F0-9]{4,}\.{3}[a-fA-F0-9]{4,}$/
+  );
+
   return (
     profile.ensName ||
     profile.farcasterProfile?.fname ||
-    profile.openGraphData?.ogTitle ||
+    (profile.openGraphData?.ogTitle && !isShortAddress
+      ? profile.openGraphData.ogTitle
+      : '') ||
     profile.address
   );
 }
