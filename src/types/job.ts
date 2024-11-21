@@ -24,6 +24,7 @@ export const validTypes = [
   'dispute',
   'draft-application',
   'builder-profile',
+  'story',
 ] as const;
 
 export interface IsGrantUpdateJobBody {
@@ -31,10 +32,16 @@ export interface IsGrantUpdateJobBody {
   grantDescription: string;
   parentFlowDescription: string;
   castHash: string;
+  builderFid: string;
   grantId: string;
   urls: string[];
 }
 
 export interface BuilderProfileJobBody {
   fid: string;
+}
+
+export interface StoryJobBody {
+  newCastId: number;
+  grantId: string;
 }

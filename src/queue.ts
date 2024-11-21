@@ -6,7 +6,8 @@ import { bulkEmbeddingsWorker } from './workers/bulk-embeddings';
 import { singleEmbeddingWorker } from './workers/single-embedding';
 import { isGrantUpdateWorker } from './workers/is-grant-update';
 import { builderProfileWorker } from './workers/builder-profile/worker';
-import { JobBody } from './types/job';
+import { JobBody, StoryJobBody } from './types/job';
+import { storyAgentWorker } from './workers/story-agent/worker';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY environment variable is required');
@@ -33,8 +34,6 @@ redisClient.on('error', (err) => console.error('Redis Client Error', err));
 let redisConnected = false;
 const ensureRedisConnected = async () => {
   if (!redisConnected) {
-    console.log('Connecting to Redis...');
-    console.log(process.env.REDIS_URL);
     await redisClient.connect();
     redisConnected = true;
   }
@@ -71,10 +70,18 @@ export const setupDeletionQueueProcessor = async (queueName: string) => {
   deletionQueueWorker(queueName, connection, redisClient as RedisClientType);
 };
 
-export const setupIsGrantUpdateQueueProcessor = async (queueName: string) => {
+export const setupIsGrantUpdateQueueProcessor = async (
+  queueName: string,
+  storyAgentQueue: Queue<StoryJobBody[]>
+) => {
   await ensureRedisConnected();
 
-  isGrantUpdateWorker(queueName, connection, redisClient as RedisClientType);
+  isGrantUpdateWorker(
+    queueName,
+    connection,
+    redisClient as RedisClientType,
+    storyAgentQueue
+  );
 };
 
 export const setupBuilderProfileQueueProcessor = async (
@@ -84,6 +91,20 @@ export const setupBuilderProfileQueueProcessor = async (
   await ensureRedisConnected();
 
   builderProfileWorker(
+    queueName,
+    connection,
+    redisClient as RedisClientType,
+    bulkEmbeddingsQueue
+  );
+};
+
+export const setupStoryQueueProcessor = async (
+  queueName: string,
+  bulkEmbeddingsQueue: Queue<JobBody[]>
+) => {
+  await ensureRedisConnected();
+
+  storyAgentWorker(
     queueName,
     connection,
     redisClient as RedisClientType,

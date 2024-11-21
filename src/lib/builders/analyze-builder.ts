@@ -2,7 +2,7 @@ import { generateText } from 'ai';
 import { log } from '../helpers';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
-import { CastWithParent } from '../../database/queries';
+import { CastWithParent } from '../../database/queries/casts/casts-with-parent';
 import { builderProfilePrompt } from '../prompts/builder-profile';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
 import crypto from 'crypto';

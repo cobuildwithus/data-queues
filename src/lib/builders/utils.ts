@@ -1,7 +1,6 @@
 import { RedisClientType } from 'redis';
-import { CastWithParent } from '../../database/queries';
+import { CastWithParent } from '../../database/queries/casts/casts-with-parent';
 import { Job } from 'bullmq';
-import { getAndSaveUrlSummaries } from '../url-summaries/attachments';
 import { cacheResult } from '../cache/cacheResult';
 import { googleAiStudioModel } from '../ai';
 import { anthropicModel } from '../ai';
@@ -97,63 +96,6 @@ export const filterCasts = (casts: CastWithParent[]) => {
     return !((cast.text?.length || 0) === 0 && hasNoEmbeds(cast));
   });
 };
-
-export async function generateCastText(
-  cast: CastWithParent,
-  redisClient: RedisClientType,
-  job: Job
-): Promise<string> {
-  if (!cast.timestamp) {
-    throw new Error('Cast timestamp is required');
-  }
-
-  const embedSummaries = await getAndSaveUrlSummaries(
-    cast.embeds,
-    cast.embedSummaries,
-    cast.id,
-    redisClient,
-    job
-  );
-
-  let parentEmbedSummaries: string[] = [];
-
-  if (cast.parentCast && cast.parentCast.id) {
-    parentEmbedSummaries = await getAndSaveUrlSummaries(
-      cast.parentCast.embeds,
-      cast.parentCast.embedSummaries,
-      cast.parentCast.id,
-      redisClient,
-      job
-    );
-  }
-
-  const contentText = cast.text ? `CONTENT: ${cast.text}` : '';
-
-  const parentAuthor = cast.parentCast?.fname
-    ? `AUTHOR: ${cast.parentCast.fname}`
-    : '';
-  const parentContent = cast.parentCast?.text
-    ? `CONTENT: ${cast.parentCast.text}`
-    : '';
-
-  return `TIMESTAMP: ${new Date(cast.timestamp).toISOString()}
-${contentText}
-${embedSummaries.length ? `ATTACHMENTS: ${embedSummaries.join(' | ')}` : ''}
-${
-  cast.parentCast?.text
-    ? `PARENT_CAST: {
-  ${parentAuthor}
-  ${parentContent}
-  ${
-    parentEmbedSummaries.length
-      ? `ATTACHMENTS: ${parentEmbedSummaries.join(' | ')}`
-      : ''
-  }
-}`
-    : ''
-}
----`;
-}
 
 export function safeTrim(text: string | null | undefined): string {
   if (text === null || text === undefined) {

@@ -42,6 +42,8 @@ export const farcasterCasts = productionSchema.table('farcaster_casts', {
   rootParentUrl: text('root_parent_url'),
   computedTags: text('computed_tags').array(),
   embedSummaries: text('embed_summaries').array(),
+  storyIds: text('story_ids').array(),
 });
 
 export type FarcasterCast = typeof farcasterCasts.$inferSelect;
+export type FarcasterProfile = typeof farcasterProfiles.$inferSelect;

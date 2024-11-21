@@ -1,14 +1,15 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import { farcasterCasts, farcasterProfiles } from './farcaster-schema';
-import { farcasterDb } from './farcasterDb';
+import { asc, eq } from 'drizzle-orm';
+import { farcasterCasts, farcasterProfiles } from '../../farcaster-schema';
+import { farcasterDb } from '../../farcasterDb';
 import { alias } from 'drizzle-orm/pg-core';
 
-export const getAllCastsWithParents = async (fid: number) => {
+const selectCasts = () => {
   const parentCastsAlias = alias(farcasterCasts, 'parentCasts');
   const profilesAlias = alias(farcasterProfiles, 'profiles');
-
-  const casts = await farcasterDb
-    .select({
+  return {
+    parentCastsAlias,
+    profilesAlias,
+    select: {
       id: farcasterCasts.id,
       createdAt: farcasterCasts.createdAt,
       updatedAt: farcasterCasts.updatedAt,
@@ -27,6 +28,11 @@ export const getAllCastsWithParents = async (fid: number) => {
       rootParentUrl: farcasterCasts.rootParentUrl,
       computedTags: farcasterCasts.computedTags,
       embedSummaries: farcasterCasts.embedSummaries,
+      storyIds: farcasterCasts.storyIds,
+      profile: {
+        fid: farcasterProfiles.fid,
+        fname: farcasterProfiles.fname,
+      },
       parentCast: {
         text: parentCastsAlias.text,
         fname: profilesAlias.fname,
@@ -35,13 +41,22 @@ export const getAllCastsWithParents = async (fid: number) => {
         fid: parentCastsAlias.fid,
         id: parentCastsAlias.id,
       },
-    })
+    },
+  };
+};
+
+export const getAllCastsWithParents = async (fid: number) => {
+  const { parentCastsAlias, profilesAlias, select } = selectCasts();
+
+  const casts = await farcasterDb
+    .select(select)
     .from(farcasterCasts)
     .leftJoin(
       parentCastsAlias,
       eq(farcasterCasts.parentHash, parentCastsAlias.hash)
     )
     .leftJoin(profilesAlias, eq(parentCastsAlias.fid, profilesAlias.fid))
+    .leftJoin(farcasterProfiles, eq(farcasterCasts.fid, farcasterProfiles.fid))
     .where(eq(farcasterCasts.fid, fid))
     .orderBy(asc(farcasterCasts.timestamp));
 
@@ -51,11 +66,3 @@ export const getAllCastsWithParents = async (fid: number) => {
 export type CastWithParent = Awaited<
   ReturnType<typeof getAllCastsWithParents>
 >[number];
-
-export const getFarcasterProfile = async (fid: number) => {
-  const profile = await farcasterDb
-    .select()
-    .from(farcasterProfiles)
-    .where(eq(farcasterProfiles.fid, fid));
-  return profile[0];
-};

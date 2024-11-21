@@ -3,11 +3,8 @@ import { BuilderProfileJobBody, JobBody } from '../../types/job';
 import { log } from '../../lib/helpers';
 import { RedisClientType } from 'redis';
 import { generateBuilderProfile } from '../../lib/builders/analyze-builder';
-import {
-  getAllCastsWithParents,
-  getFarcasterProfile,
-} from '../../database/queries';
-import { cacheResult } from '../../lib/cache/cacheResult';
+import { getAllCastsWithParents } from '../../database/queries/casts/casts-with-parent';
+import { getFarcasterProfile } from '../../database/queries/profiles/get-profile';
 import { getUniqueRootParentUrls } from './utils';
 import { cleanTextForEmbedding } from '../../lib/embedding/utils';
 
@@ -55,20 +52,6 @@ export const builderProfileWorker = async (
           }
 
           try {
-            // Set lock before processing
-            const lockData: LockData = {
-              timestamp: Date.now(),
-              ttl: LOCK_TTL,
-            };
-
-            await cacheResult(
-              redisClient,
-              lockKey,
-              '',
-              async () => lockData,
-              true
-            );
-
             const casts = await getAllCastsWithParents(Number(profile.fid));
             const farcasterProfile = await getFarcasterProfile(
               Number(profile.fid)

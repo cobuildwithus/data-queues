@@ -19,6 +19,7 @@ export async function downloadImageToBuffer(
           '(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
         // Add 'Accept' and 'Referer' headers
         Accept: '*/*',
+        'x-pinata-gateway-token': process.env.PINATA_GATEWAY_KEY || '',
         Referer: imageUrl,
       },
     });
@@ -64,7 +65,7 @@ export function getImageUrl(imageUrl: string, job: Job): string | null {
     );
 
     if (!isAllowedImageDomain) {
-      // log(`Skipping image from non-allowed domain: ${urlObj.hostname}`, job);
+      log(`Skipping from non-allowed domain: ${urlObj.hostname}`, job);
       return null;
     }
 

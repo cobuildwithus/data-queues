@@ -1,26 +1,153 @@
 import { Job } from 'bullmq';
 import { getGrantUpdateCastPrompt } from '../prompts/grant-update-cast';
 import { log } from '../helpers';
+import { getAndSaveUrlSummaries } from '../url-summaries/attachments';
+import { RedisClientType } from 'redis';
+import { CastWithParent } from '../../database/queries/casts/casts-with-parent';
+import { CastForStory } from '../../database/queries/casts/casts-for-story';
 
-export function getMessageContent(
-  data: {
-    castContent?: string;
-    grantId: string;
-    grantDescription: string;
-    parentFlowDescription: string;
-    castHash: string;
-  },
-  summaries: string[],
-  job: Job
+function getEmbedUrls(embeds: string | null): string[] {
+  if (!embeds) return [];
+  return JSON.parse(embeds).map((embed: { url: string }) => embed.url);
+}
+
+function generateCastUrl(
+  fname: string | undefined,
+  hash: string | null
 ): string {
-  const content = getGrantUpdateCastPrompt({
-    grantId: data.grantId,
-    grantDescription: data.grantDescription,
-    parentFlowDescription: data.parentFlowDescription,
-    attachmentSummaries: summaries,
-  });
+  return `https://warpcast.com/${fname}/0x${Buffer.from(hash || '').toString(
+    'hex'
+  )}`;
+}
 
-  log(content, job);
+function formatParentCastSection(
+  parentCast: CastWithParent['parentCast'],
+  parentEmbedSummaries: string[]
+): string {
+  if (!parentCast?.text) return '';
 
-  return content;
+  const parentAuthor = parentCast.fname
+    ? `AUTHOR: ${parentCast.fname} (fid: ${parentCast.fid})`
+    : '';
+  const parentContent = `CONTENT: ${parentCast.text}`;
+  const attachments = parentEmbedSummaries.length
+    ? `ATTACHMENTS: ${parentEmbedSummaries.join(' | ')}`
+    : '';
+
+  return `PARENT_CAST: {
+  ${parentAuthor}
+  ${parentContent}
+  ${attachments}
+}`;
+}
+
+export async function generateCastText(
+  cast: CastWithParent,
+  redisClient: RedisClientType,
+  job: Job
+): Promise<string> {
+  if (!cast.timestamp) {
+    throw new Error('Cast timestamp is required');
+  }
+
+  const embedSummaries = await getAndSaveUrlSummaries(
+    cast.embeds,
+    cast.embedSummaries,
+    cast.id,
+    redisClient,
+    job
+  );
+
+  const embedUrls = getEmbedUrls(cast.embeds);
+
+  let parentEmbedSummaries: string[] = [];
+  if (cast.parentCast?.id) {
+    parentEmbedSummaries = await getAndSaveUrlSummaries(
+      cast.parentCast.embeds,
+      cast.parentCast.embedSummaries,
+      cast.parentCast.id,
+      redisClient,
+      job
+    );
+  }
+
+  const contentText = cast.text ? `CONTENT: ${cast.text}` : '';
+  const castUrl = generateCastUrl(cast.profile?.fname ?? undefined, cast.hash);
+  const attachments = embedSummaries.length
+    ? `ATTACHMENTS: ${embedSummaries.join(' | ')}`
+    : '';
+  const attachmentUrls = embedUrls.length
+    ? `ATTACHMENT_URLS: ${embedUrls.join(' | ')}`
+    : '';
+  const parentCastSection = formatParentCastSection(
+    cast.parentCast,
+    parentEmbedSummaries
+  );
+
+  return `TIMESTAMP: ${new Date(cast.timestamp).toISOString()}
+${contentText}
+CAST_URL: ${castUrl}
+${attachments}
+${attachmentUrls}
+${parentCastSection}
+---`;
+}
+
+function formatRepliesSection(
+  replies:
+    | { text: string | null; fid: number | null; hash: string | null }[]
+    | null
+): string {
+  if (!replies || replies.length === 0) {
+    return '';
+  }
+
+  const replyTexts = replies
+    .filter((reply) => reply.text && reply.hash)
+    .map((reply) => {
+      const replyUrl = generateCastUrl(undefined, reply.hash!);
+      return `REPLY: ${reply.text}
+REPLY_URL: ${replyUrl}`;
+    });
+
+  return replyTexts.join('\n');
+}
+export async function generateCastTextForStory(
+  cast: CastForStory,
+  redisClient: RedisClientType,
+  job: Job
+): Promise<string> {
+  if (!cast.timestamp) {
+    throw new Error('Cast timestamp is required');
+  }
+
+  // Get embed summaries from cache or generate new ones
+  const embedSummaries = await getAndSaveUrlSummaries(
+    cast.embeds,
+    cast.embedSummaries,
+    cast.id,
+    redisClient,
+    job
+  );
+
+  const embedUrls = getEmbedUrls(cast.embeds);
+
+  const contentText = cast.text ? `CONTENT: ${cast.text}` : '';
+  const castUrl = generateCastUrl(cast.profile?.fname ?? undefined, cast.hash);
+  const attachments = embedSummaries.length
+    ? `ATTACHMENTS: ${embedSummaries.join(' | ')}`
+    : '';
+  const attachmentUrls = embedUrls.length
+    ? `ATTACHMENT_URLS: ${embedUrls.join(' | ')}`
+    : '';
+
+  const repliesSection = cast.replies ? formatRepliesSection(cast.replies) : '';
+
+  return `TIMESTAMP: ${new Date(cast.timestamp).toISOString()}
+${contentText}
+CAST_URL: ${castUrl}
+${attachments}
+${attachmentUrls}
+${repliesSection}
+---`;
 }

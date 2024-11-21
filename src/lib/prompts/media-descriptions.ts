@@ -2,11 +2,14 @@ export const videoDescriptionPrompt =
   () => `Please provide a detailed description of this video, focusing on all visible elements, their relationships, and the overall context. 
 Be sure to describe the actions that are happening in the video at a high level, especially how they relate to people and how they interact with others in public or in their community. 
 If there are red square glasses, please describe what the person is doing with them, and you can refer to them as noggles. 
+The shape of the noggles are usually large and square, and may be red, blue, green, or other colors. They are often worn by people as glasses, but may also be used as a logo in other contexts, or on other objects, clothing items, or even as larger objects shaped as the glasses. 
+Mention noggles if you see them in any of these contexts.
 If you see any other branding/text make sure to include it, especially if it's about Nouns, Gnars, Vrbs or the nouns symbol ⌐◨-◨ (The nouns symbol is noggles, or the glasses referred to above).
 Try to ascertain the locations of the people and places in the video.
 "Flows" or "flows.wtf" is a decentralized grants platform for NounsDAO that streams money to the best builders in Nouns, every second.
 Make sure to mention what types of activities are happening in the video,
-or otherwise what type of work is being done.`;
+or otherwise what type of work is being done.
+Always describe in vivid detail the people in the video and what they look like, from their facial features, hair color, height, weight, clothing, and anything else that might be relevant.`;
 
 export const imageDescriptionPrompt =
   () => `Please provide a detailed description of the following image, 
@@ -21,4 +24,7 @@ The information you share will be fed to an embedding model, so don't use new li
 Don't forget to include the word noggles if you see big square glasses.
 DO NOT return anything if you cannot access the image or it is otherwise unavilable. Just return an empty string.
 Do not return JSON, just return the text.
-Be thorough and detailed in your analysis of the image, what's going on, who is in the image, what they are doing, etc.`;
+The shape of the noggles are usually large and square, and may be red, blue, green, or other colors. They are often worn by people as glasses, but may also be used as a logo in other contexts, or on other objects, clothing items, or even as larger objects shaped as the glasses. 
+Mention noggles if you see them in any of these contexts.
+Be thorough and detailed in your analysis of the image, what's going on, who is in the image, what they are doing, etc.
+Always describe in vivid detail the people in the image and what they look like, from their facial features, hair color, height, weight, clothing, and anything else that might be relevant.`;

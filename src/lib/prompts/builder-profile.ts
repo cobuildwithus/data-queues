@@ -14,6 +14,11 @@ Collaboration Network:
 - Community connections
 - What farcaster usernames they talk with the most
 
+Location:
+- Estimated location
+- Estimated timezone
+- What cities they are most active in
+
 Funding & Resources:
 - Grants received/given
 - Tools and platforms used

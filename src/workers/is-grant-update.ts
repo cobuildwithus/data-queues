@@ -1,5 +1,5 @@
-import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
-import { IsGrantUpdateJobBody } from '../types/job';
+import { Worker, Job, RedisOptions, ClusterOptions, Queue } from 'bullmq';
+import { IsGrantUpdateJobBody, StoryJobBody } from '../types/job';
 import { log } from '../lib/helpers';
 import { analyzeCast } from '../lib/casts/analyze-cast';
 import { RedisClientType } from 'redis';
@@ -12,12 +12,14 @@ import { derivedData } from '../database/flows-schema';
 export const isGrantUpdateWorker = async (
   queueName: string,
   connection: RedisOptions | ClusterOptions,
-  redisClient: RedisClientType
+  redisClient: RedisClientType,
+  storyAgentQueue: Queue<StoryJobBody[]>
 ) => {
   new Worker<IsGrantUpdateJobBody[]>(
     queueName,
     async (job: Job<IsGrantUpdateJobBody[]>) => {
       const casts = job.data;
+      const storyJobs: StoryJobBody[] = [];
 
       if (!casts || !casts.length) {
         throw new Error('Cast data is required');
@@ -42,6 +44,11 @@ export const isGrantUpdateWorker = async (
               })
               .where(sql`hash = ${castHashBuffer}`)
               .returning();
+
+            // storyJobs.push({
+            //   newCastId: updated[0].id,
+            //   grantId: result.grantId,
+            // });
 
             // get timestamp of updated cast
             const timestamp = updated[0].timestamp;
@@ -85,9 +92,19 @@ export const isGrantUpdateWorker = async (
           results.push(result);
         }
 
+        const queueJobName = `story-agent-${Date.now()}`;
+
+        const storyQueueJob = await storyAgentQueue.add(
+          queueJobName,
+          storyJobs
+        );
+
+        log(`Added ${storyJobs.length} story jobs to queue`, job);
+
         return {
           jobId: job.id,
           results,
+          storyQueueJobId: storyQueueJob.id,
         };
       } catch (error) {
         console.error('Error processing casts:', error);

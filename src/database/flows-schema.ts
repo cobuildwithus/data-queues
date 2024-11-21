@@ -1,6 +1,15 @@
-import { text, timestamp, integer, pgSchema } from 'drizzle-orm/pg-core';
+import {
+  text,
+  timestamp,
+  integer,
+  pgSchema,
+  pgTable,
+  boolean,
+  jsonb,
+  numeric,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
-// Define the schema
 const webSchema = pgSchema('web');
 
 export const derivedData = webSchema.table('DerivedData', {
@@ -11,4 +20,78 @@ export const derivedData = webSchema.table('DerivedData', {
   minimumSalary: integer('minimumSalary'),
   template: text('template'),
   lastBuilderUpdate: timestamp('lastBuilderUpdate'),
+});
+
+export const stories = webSchema.table('Stories', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  title: text('title').notNull(),
+  summary: text('summary').notNull(),
+  keyPoints: text('key_points').array(),
+  participants: text('participants').array(),
+  headerImage: text('header_image'),
+  timeline: jsonb('timeline'),
+  sentiment: text('sentiment', { enum: ['positive', 'negative', 'neutral'] }),
+  completeness: numeric('completeness', { precision: 3, scale: 2 }),
+  complete: boolean('complete').notNull(),
+  sources: text('sources').array(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  mediaUrls: text('media_urls').array(),
+  author: text('author'),
+  grantId: text('grant_id'),
+  parentFlowId: text('parent_flow_id'),
+  tagline: text('tagline'),
+});
+
+export const grant = pgTable('Grant', {
+  id: text('id').primaryKey(),
+  recipient: text('recipient').notNull(),
+  flowId: text('flowId').notNull(),
+  submitter: text('submitter').notNull(),
+  parentContract: text('parentContract').notNull(),
+  isTopLevel: integer('isTopLevel').notNull(),
+  isFlow: integer('isFlow').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  image: text('image').notNull(),
+  tagline: text('tagline'),
+  url: text('url'),
+  isRemoved: integer('isRemoved').notNull(),
+  isActive: integer('isActive').notNull(),
+  votesCount: text('votesCount').notNull(),
+  monthlyIncomingFlowRate: text('monthlyIncomingFlowRate').notNull(),
+  monthlyIncomingBaselineFlowRate: text(
+    'monthlyIncomingBaselineFlowRate'
+  ).notNull(),
+  monthlyIncomingBonusFlowRate: text('monthlyIncomingBonusFlowRate').notNull(),
+  monthlyOutgoingFlowRate: text('monthlyOutgoingFlowRate').notNull(),
+  monthlyRewardPoolFlowRate: text('monthlyRewardPoolFlowRate').notNull(),
+  monthlyBaselinePoolFlowRate: text('monthlyBaselinePoolFlowRate').notNull(),
+  monthlyBonusPoolFlowRate: text('monthlyBonusPoolFlowRate').notNull(),
+  bonusMemberUnits: text('bonusMemberUnits').notNull(),
+  baselineMemberUnits: text('baselineMemberUnits').notNull(),
+  totalEarned: text('totalEarned').notNull(),
+  activeRecipientCount: integer('activeRecipientCount').notNull(),
+  awaitingRecipientCount: integer('awaitingRecipientCount').notNull(),
+  challengedRecipientCount: integer('challengedRecipientCount').notNull(),
+  tcr: text('tcr').unique().notNull(),
+  erc20: text('erc20').unique().notNull(),
+  arbitrator: text('arbitrator').unique().notNull(),
+  tokenEmitter: text('tokenEmitter').unique().notNull(),
+  status: integer('status').notNull(),
+  challengePeriodEndsAt: integer('challengePeriodEndsAt').notNull(),
+  isDisputed: integer('isDisputed').notNull(),
+  isResolved: integer('isResolved').notNull(),
+  evidenceGroupID: text('evidenceGroupID').unique().notNull(),
+  createdAt: integer('createdAt').notNull(),
+  updatedAt: integer('updatedAt').notNull(),
+  baselinePool: text('baselinePool').notNull(),
+  bonusPool: text('bonusPool').notNull(),
+  managerRewardPool: text('managerRewardPool').notNull(),
+  superToken: text('superToken').notNull(),
+  managerRewardSuperfluidPool: text('managerRewardSuperfluidPool').notNull(),
+  managerRewardPoolFlowRatePercent: integer(
+    'managerRewardPoolFlowRatePercent'
+  ).notNull(),
+  baselinePoolFlowRatePercent: integer('baselinePoolFlowRatePercent').notNull(),
 });

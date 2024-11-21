@@ -109,6 +109,7 @@ export const isGrantUpdateSchema = {
             'parentFlowDescription',
             'castHash',
             'grantId',
+            'builderFid',
             'urls',
           ],
           properties: {
@@ -117,6 +118,7 @@ export const isGrantUpdateSchema = {
             parentFlowDescription: { type: 'string' },
             castHash: { type: 'string' },
             grantId: { type: 'string' },
+            builderFid: { type: 'string' },
             urls: {
               type: 'array',
               items: { type: 'string' },

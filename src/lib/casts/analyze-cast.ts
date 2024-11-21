@@ -8,8 +8,9 @@ import { anthropicModel, retryAiCallWithBackoff } from '../ai';
 import { googleAiStudioModel, openAIModel } from '../ai';
 import { cacheCastAnalysis, CastAnalysis } from './cache';
 import { getCachedCastAnalysis } from './cache';
-import { getMessageContent } from './utils';
 import { saveUrlSummariesForCastHash } from '../url-summaries/attachments';
+import { getGrantUpdateCastPrompt } from '../prompts/grant-update-cast';
+import { getBuilderProfile } from '../../database/queries/profiles/get-builder-profile';
 
 export async function analyzeCast(
   redisClient: RedisClientType,
@@ -38,6 +39,8 @@ export async function analyzeCast(
     job
   );
 
+  const builderProfile = await getBuilderProfile(parseInt(data.builderFid));
+
   const { object } = await retryAiCallWithBackoff(
     (model) => () =>
       generateObject({
@@ -55,14 +58,33 @@ export async function analyzeCast(
         messages: [
           {
             role: 'system',
-            content: getMessageContent(data, summaries, job),
+            content: getGrantUpdateCastPrompt(),
           },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: data.castContent || 'NO CAST CONTENT PROVIDED',
+                text: `Cast Content: ${
+                  data.castContent || 'NO CAST CONTENT PROVIDED'
+                }
+
+Grant Details:
+Grant ID: ${data.grantId}
+Description: ${data.grantDescription}
+Parent Flow Description: ${data.parentFlowDescription}
+Pay special attention to the following attachments posted by the user. 
+The attachments are either videos or images, and you should use them to determine if the cast is a grant update.
+They are described below:
+${
+  summaries.length
+    ? `The update contains the following attachments posted by the user: ${summaries.join(
+        ', '
+      )}`
+    : 'The update contains no attachments'
+}
+
+Builder Profile: ${builderProfile?.content}`,
               },
             ],
           },

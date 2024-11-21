@@ -8,6 +8,7 @@ import {
   setupBulkQueueProcessor,
   setupIsGrantUpdateQueueProcessor,
   setupBuilderProfileQueueProcessor,
+  setupStoryQueueProcessor,
 } from './queue';
 import 'dotenv/config';
 import { handleAddEmbeddingJob } from './jobs/addEmbeddingJob';
@@ -28,6 +29,7 @@ import {
   DeletionJobBody,
   IsGrantUpdateJobBody,
   JobBody,
+  StoryJobBody,
 } from './types/job';
 
 const setupQueue = async () => {
@@ -39,15 +41,18 @@ const setupQueue = async () => {
   const builderProfileQueue = createQueue<BuilderProfileJobBody[]>(
     'BuilderProfileQueue'
   );
+  const storyQueue = createQueue<StoryJobBody[]>('StoryQueue');
 
   await setupQueueProcessor(embeddingsQueue.name);
   await setupDeletionQueueProcessor(deletionQueue.name);
   await setupBulkQueueProcessor(bulkEmbeddingsQueue.name);
-  await setupIsGrantUpdateQueueProcessor(isGrantUpdateQueue.name);
+
+  await setupIsGrantUpdateQueueProcessor(isGrantUpdateQueue.name, storyQueue);
   await setupBuilderProfileQueueProcessor(
     builderProfileQueue.name,
     bulkEmbeddingsQueue
   );
+  await setupStoryQueueProcessor(storyQueue.name, bulkEmbeddingsQueue);
 
   return {
     embeddingsQueue,
@@ -55,6 +60,7 @@ const setupQueue = async () => {
     bulkEmbeddingsQueue,
     isGrantUpdateQueue,
     builderProfileQueue,
+    storyQueue,
   };
 };
 
@@ -64,6 +70,7 @@ const setupServer = (queues: {
   bulkEmbeddingsQueue: Queue;
   isGrantUpdateQueue: Queue;
   builderProfileQueue: Queue;
+  storyQueue: Queue;
 }) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();
@@ -74,6 +81,7 @@ const setupServer = (queues: {
     queues.bulkEmbeddingsQueue,
     queues.isGrantUpdateQueue,
     queues.builderProfileQueue,
+    queues.storyQueue,
   ]);
 
   server.post(

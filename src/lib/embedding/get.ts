@@ -37,10 +37,6 @@ export const getEmbedding = async (
     input += ` [Contains attachments: ${summaries.join(', ')}]`;
   }
 
-  if (summaries.length > 0) {
-    console.log({ input, summaries, text, urls });
-  }
-
   const response = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: input,

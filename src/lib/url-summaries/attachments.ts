@@ -7,6 +7,7 @@ import { farcasterDb } from '../../database/farcasterDb';
 import { FarcasterCast, farcasterCasts } from '../../database/farcaster-schema';
 import { log } from '../helpers';
 import { eq, sql } from 'drizzle-orm';
+import { describeZora } from '../multi-media/zora/describe-zora';
 
 // Get URL summaries from a list of URLs
 export const fetchUrlSummaries = async (
@@ -29,15 +30,19 @@ export const fetchUrlSummaries = async (
         type = 'image';
       }
 
-      if (type === 'image') {
+      if (url.includes('zora.co')) {
+        const summary = await describeZora(url, redisClient, job);
+        log(`Zora summary: ${summary}`, job);
+        if (summary) {
+          summaries.push(summary);
+        }
+      } else if (type === 'image') {
         const summary = await describeImage(url, redisClient, job);
         // Only add non-empty summaries that aren't just empty quotes
         if (summary && safeTrim(summary) !== '""' && safeTrim(summary) !== '') {
           summaries.push(summary);
         }
-      }
-
-      if (type === 'video') {
+      } else if (type === 'video') {
         const summary = await describeVideo(url, redisClient, job);
         if (summary) {
           summaries.push(summary);
@@ -97,6 +102,27 @@ export async function saveUrlSummariesForCastHash(
     throw new Error(
       `Cast hash is not valid length: ${castHash}, ${castHash.length}`
     );
+  }
+
+  // Get existing cast to check for embed summaries
+  const existingCast = await farcasterDb
+    .select({ embedSummaries: farcasterCasts.embedSummaries })
+    .from(farcasterCasts)
+    .where(sql`hash = ${Buffer.from(castHash.replace('0x', ''), 'hex')}`)
+    .limit(1);
+
+  if (!existingCast.length) {
+    throw new Error(`Cast not found for hash: ${castHash}`);
+  }
+
+  // Return existing summaries if present
+  // but if the urls include zora.co, then don't return existing summaries
+  if (
+    existingCast[0].embedSummaries &&
+    existingCast[0].embedSummaries.length > 0 &&
+    !urls.some((url) => url.includes('zora.co'))
+  ) {
+    return existingCast[0].embedSummaries;
   }
 
   const summaries = await fetchUrlSummaries(redisClient, job, urls);

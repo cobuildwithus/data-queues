@@ -24,4 +24,5 @@ export const imageDomains = [
   'dweb.link',
   'arweave.net',
   'ar-io.net',
+  'flo.mypinata.cloud',
 ];
