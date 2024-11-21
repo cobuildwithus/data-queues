@@ -1,7 +1,7 @@
 import { RedisClientType } from 'redis';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
 
-const CAST_ANALYSIS_CACHE_PREFIX = 'ai-cast-analysis-v1:';
+const CAST_ANALYSIS_CACHE_PREFIX = 'ai-cast-analysis-v2:';
 
 export interface CastAnalysis {
   grantId?: string;
