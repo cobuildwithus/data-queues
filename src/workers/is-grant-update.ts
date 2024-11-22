@@ -27,7 +27,8 @@ export const isGrantUpdateWorker = async (
 
       try {
         const results = [];
-        for (const cast of casts) {
+        for (let i = 0; i < casts.length; i++) {
+          const cast = casts[i];
           const result = await analyzeCast(redisClient, cast, job);
 
           if (result.isGrantUpdate && result.grantId) {
