@@ -46,6 +46,8 @@ export const isGrantUpdateWorker = async (
               .where(sql`hash = ${castHashBuffer}`)
               .returning();
 
+            log(`Updated cast: ${updated[0].id}`, job);
+
             storyJobs.push({
               newCastId: updated[0].id,
               grantId: result.grantId,
