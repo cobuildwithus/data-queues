@@ -45,10 +45,10 @@ export const isGrantUpdateWorker = async (
               .where(sql`hash = ${castHashBuffer}`)
               .returning();
 
-            // storyJobs.push({
-            //   newCastId: updated[0].id,
-            //   grantId: result.grantId,
-            // });
+            storyJobs.push({
+              newCastId: updated[0].id,
+              grantId: result.grantId,
+            });
 
             // get timestamp of updated cast
             const timestamp = updated[0].timestamp;
@@ -94,17 +94,17 @@ export const isGrantUpdateWorker = async (
 
         const queueJobName = `story-agent-${Date.now()}`;
 
-        const storyQueueJob = await storyAgentQueue.add(
-          queueJobName,
-          storyJobs
-        );
+        let storyQueueJob;
+        if (storyJobs.length > 0) {
+          storyQueueJob = await storyAgentQueue.add(queueJobName, storyJobs);
+        }
 
         log(`Added ${storyJobs.length} story jobs to queue`, job);
 
         return {
           jobId: job.id,
           results,
-          storyQueueJobId: storyQueueJob.id,
+          storyQueueJobId: storyQueueJob?.id || '',
         };
       } catch (error) {
         console.error('Error processing casts:', error);
