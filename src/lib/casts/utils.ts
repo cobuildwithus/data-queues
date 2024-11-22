@@ -3,6 +3,7 @@ import { getAndSaveUrlSummaries } from '../url-summaries/attachments';
 import { RedisClientType } from 'redis';
 import { CastWithParent } from '../../database/queries/casts/casts-with-parent';
 import { CastForStory } from '../../database/queries/casts/casts-for-story';
+import { ImpactVerification } from './impact-verification';
 
 function getEmbedUrls(embeds: string | null): string[] {
   if (!embeds) return [];
@@ -139,6 +140,15 @@ export async function generateCastTextForStory(
     ? `ATTACHMENT_URLS: ${embedUrls.join(' | ')}`
     : '';
 
+  const grantUpdateReason = JSON.stringify(
+    (cast.impactVerifications as ImpactVerification[]).filter(
+      (v) =>
+        v.is_grant_update &&
+        v.grant_id &&
+        cast.computedTags?.includes(v.grant_id)
+    )
+  );
+
   const repliesSection = cast.replies ? formatRepliesSection(cast.replies) : '';
 
   return `TIMESTAMP: ${new Date(cast.timestamp).toISOString()}
@@ -147,5 +157,6 @@ CAST_URL: ${castUrl}
 ${attachments}
 ${attachmentUrls}
 ${repliesSection}
+${grantUpdateReason ? `IMPACT_VERIFICATION: ${grantUpdateReason}` : ''}
 ---`;
 }

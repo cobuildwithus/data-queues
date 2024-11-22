@@ -154,6 +154,9 @@ async function buildStory(
                      Include images inside the story if there are any relevant images for each section. Include them as markdown images, taken from the cast attachments.
                      Include the best image as a header image for the story. Do not make up images or urls. Only include images from the image delivery cast attachments.
                      Any urls that include .m3u8 are videos, and should not be the header image.
+                     zora.co links are not images, and should not be included as the header image or any other image or media url.
+                     The header image should only be an image from one of the casts that are part of the story.
+                     Do not use an image from a cast that is not part of the story.
 
                      # Title
                      Make the title of the story concise and only a few words max. The stories will be shown in a grid, 

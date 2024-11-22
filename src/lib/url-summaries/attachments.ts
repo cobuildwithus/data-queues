@@ -119,8 +119,7 @@ export async function saveUrlSummariesForCastHash(
   // but if the urls include zora.co, then don't return existing summaries
   if (
     existingCast[0].embedSummaries &&
-    existingCast[0].embedSummaries.length > 0 &&
-    !urls.some((url) => url.includes('zora.co'))
+    existingCast[0].embedSummaries.length > 0
   ) {
     return existingCast[0].embedSummaries;
   }

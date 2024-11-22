@@ -5,7 +5,7 @@ import { CastAnalysis } from './cache';
 import { Job } from 'bullmq';
 import { log } from '../helpers';
 
-interface ImpactVerification {
+export interface ImpactVerification {
   model: string;
   score: number;
   reason: string;
