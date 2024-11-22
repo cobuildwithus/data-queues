@@ -1,4 +1,4 @@
-import { generateObject } from 'ai';
+import { generateObject, generateText } from 'ai';
 import { z } from 'zod';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
@@ -62,6 +62,49 @@ async function buildStory(
     );
 
   log('Generating stories', job);
+
+  const text = await retryAiCallWithBackoff(
+    (model) => () =>
+      generateText({
+        model,
+        temperature: 0,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are Hunter S. Thompson, writing a story about the grant.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: getTextFromUserMessage(
+                  combinedContent,
+                  existingStories,
+                  grant,
+                  parentGrant
+                ),
+              },
+            ],
+          },
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'text',
+                text: '<story_planning>',
+              },
+            ],
+          },
+        ],
+        maxTokens: 4000,
+      }),
+    job,
+    [anthropicModel, openAIModel]
+  );
+
+  console.log('Text for AI:', text.text);
 
   const { object } = await retryAiCallWithBackoff(
     (model) => () =>
@@ -139,104 +182,16 @@ async function buildStory(
         messages: [
           {
             role: 'system',
-            content: `You are analyzing a series of related posts to identify and construct multiple distinct newsworthy stories.
-                     Group related posts together into coherent narratives, identifying major stories or themes.
-                     For each story, consider the chronological order, relationships between posts, and extract key information.
-                     Focus on building narratives that capture the full context and progression of events.
-                     Prioritize the most significant and newsworthy stories from the content.
-                     If you don't have enough details to build a full story, you can still return a partial story.
-                     Only build stories that are related to the grant or impact based on the work expected from the grant.
-
-                     # Participants
-                     Only pass Farcaster usernames of the user profiles to the participants array, not usernames. You can get these from the casts.
-
-                     # Images
-                     Include images inside the story if there are any relevant images for each section. Include them as markdown images, taken from the cast attachments.
-                     Include the best image as a header image for the story. Do not make up images or urls. Only include images from the image delivery cast attachments.
-                     Any urls that include .m3u8 are videos, and should not be the header image.
-                     zora.co links are not images, and should not be included as the header image or any other image or media url.
-                     The header image should only be an image from one of the casts that are part of the story.
-                     Do not use an image from a cast that is not part of the story.
-
-                     # Title
-                     Make the title of the story concise and only a few words max. The stories will be shown in a grid, 
-                     with stories from other grants, so make the title unique to the grant and descriptive, but very concise.
-                     Make sure the title is not too generic. If you need more details, you should include a shortened name of the recipient if it makes sense.
-
-                     # Summary
-                     The story should be composed into 2-5 paragraphs, each with an h1 markdown header. The paragraphs should
-                     be at least a few sentences each. If you don't have enough information to write a paragraph, you can mark
-                     the story as incomplete. Feel free to link to any external sources included in the casts that are relevant to the story.
-                     Use markdown links where possible.
-
-                     Don't be cringy about the headers for each section, be specific and descriptive.
-
-                     The summary should be a comprehensive summary of all events, written in a journalistic style.
-                     The story should be written in a way that is easy to understand and follow, in a journalistic style.
-                     The story will be attached to a grant, and you should only write about things that are related to the grant.
-                     Additionally, the story should fit under the requirements of the parent flow, and ideally highlight
-                     impact that fits both the grant deliverables and the parent flow requirements.
-
-                     # Sources
-                     Always keep your stories grounded in source material, never make up information.
-
-                     Never ever use the word "web3" or "NFT", and only use crypto if absolutely necessary.
-
-                     # People
-                     When mentioning people, only mention their names, do not call them impersonal titles.
-
-                     # Created at
-                     The created at timestamp should be the timestamp of when the story impact occurred.
-
-                     # Tagline
-                     The tagline should be a short, catchy phrase that captures the essence of the story, and is no more than 12 words.
-
-                     # Quotes
-                     If you are able to add quotes from the builder or from community members to the markdown, do so.
-                     Only use quotes from the cast text over quotes from the summary.
-
-                     # Language
-                     Don't be cringy about referring to nounish values.
-
-                     # Info needed to complete
-                     If you don't have enough information to write a story, you can mark the story as incomplete, and set the completeness score to something less than 1.
-                     If you don't have enough information to write a story, you can add a string to the infoNeededToComplete field.
-                     This string should describe what information is needed to complete the story.
-                     Only create stories that have at least two sources. If you don't have enough information to write a story, you should mark the story as incomplete.
-
-                     # Existing stories
-                     Do not duplicate information across stories, try to make each story about unique impact that has occurred.
-                     Focus on exciting and impactful stories that people interested in the worldwide impact of the parent flow will want to read.
-
-                     Feel free to not return any stories if you don't have any good ideas. Do not force stories that are not good or impactful to the grant.
-                     `,
+            content: `You are Hunter S. Thompson, an expert journalist creating stories based on the analysis. You will receive
+              a series of texts with the following format:
+              <story_planning>
+              ...
+              </story_planning>
+              and you will need to create a story based on the analysis and returned intial draft.`,
           },
           {
             role: 'user',
-            content: `Here is the combined content of new casts that haven't been used in existing stories:\n${JSON.stringify(
-              combinedContent,
-              null,
-              2
-            )}\n\nHere are the existing stories for this grant:\n${JSON.stringify(
-              existingStories.map((story) => ({
-                id: story.id,
-                title: story.title,
-                summary: story.summary,
-                keyPoints: story.keyPoints,
-                participants: story.participants,
-                timeline: story.timeline,
-                completeness: story.completeness,
-                complete: story.complete,
-                sources: story.sources,
-                tagline: story.tagline,
-              })),
-              null,
-              2
-            )}\n\nGrant description: ${
-              grant.description || 'No description provided.'
-            }\nParent flow description: ${
-              parentGrant.description || 'No description provided.'
-            }`,
+            content: text.text,
           },
         ],
         maxTokens: 4000,
@@ -257,4 +212,109 @@ async function buildStory(
     }
     return story;
   });
+}
+
+function getTextFromUserMessage(
+  combinedContent: {
+    content: string;
+    timestamp: Date | null;
+  }[],
+  existingStories: GrantStories,
+  grant: { description: string | null },
+  parentGrant: { description: string | null }
+): string {
+  const content = `You are an expert journalist tasked with analyzing grant-related posts and constructing newsworthy stories about the impact of grant recipients. Your goal is to create compelling narratives that showcase the real-world effects of the funded projects.
+
+First, review the following context:
+
+Existing Stories:
+<stories>
+${JSON.stringify(
+  existingStories.map((story) => ({
+    id: story.id,
+    title: story.title,
+    summary: story.summary,
+    keyPoints: story.keyPoints,
+    participants: story.participants,
+    timeline: story.timeline,
+    completeness: story.completeness,
+    complete: story.complete,
+    sources: story.sources,
+    tagline: story.tagline,
+  })),
+  null,
+  2
+)}
+</stories>
+
+New Casts:
+<casts>
+${JSON.stringify(combinedContent, null, 2)}
+</casts>
+
+Grant Description:
+<grant>
+${grant.description || 'No description provided.'}
+</grant>
+
+Parent Flow Description:
+<flow>
+${parentGrant.description || 'No description provided.'}
+</flow>
+
+Now, follow these steps to create impactful stories:
+
+1. Analyze the information:
+Break down the information inside <story_planning> tags. Consider the following:
+a. Summarize key themes from the grant description
+b. List and categorize relevant information from casts
+c. Identify potential story angles and their supporting evidence
+d. Evaluate completeness of information for each potential story
+e. Identify potential header images from cast attachments
+f. Check for any quotes that can be included
+
+2. Create the story:
+Based on your analysis, construct a story using the following structure:
+
+<story>
+{
+  "title": "Concise, unique title (max 10 words)",
+  "tagline": "Catchy phrase capturing the essence (max 12 words)",
+  "headerImage": "URL of the best relevant image (omit if none available)",
+  "summary": "
+# First Section Header
+
+First paragraph of the summary...
+
+# Second Section Header
+
+Second paragraph of the summary...
+
+(2-5 paragraphs total, each with an h1 markdown header)
+  ",
+  "participants": ["Farcaster username 1", "Farcaster username 2"],
+  "createdAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "completenessScore": 0.0 to 1.0,
+  "infoNeededToComplete": "Description of missing information (if incomplete)"
+}
+</story>
+
+Important guidelines:
+- Focus only on information related to the grant and its impact
+- Use a journalistic style and avoid promotional language
+- Do not use terms like "web3" or "NFT", and only use "crypto" if absolutely necessary
+- Include relevant markdown links to external sources mentioned in the casts
+- Use quotes from cast text when available, not from summaries
+- Ensure each story is unique and doesn't duplicate information from existing stories
+- Mark stories as incomplete (completenessScore < 1.0) if there's not enough information or no header image available
+- Only create stories with at least two sources
+- Prioritize exciting and impactful stories relevant to the parent flow
+- Prefer making multiple stories over one long story
+
+If you can't create any good, impactful stories related to the grant, it's acceptable to return an empty response.
+
+Begin your response by analyzing the information in <story_planning> tags, then proceed to create stories based on your analysis.`;
+
+  console.log('Content for AI:', content);
+  return content;
 }
