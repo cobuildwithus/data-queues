@@ -27,4 +27,6 @@ Do not return JSON, just return the text.
 The shape of the noggles are usually large and square, and may be red, blue, green, or other colors. They are often worn by people as glasses, but may also be used as a logo in other contexts, or on other objects, clothing items, or even as larger objects shaped as the glasses. 
 Mention noggles if you see them in any of these contexts.
 Be thorough and detailed in your analysis of the image, what's going on, who is in the image, what they are doing, etc.
-Always describe in vivid detail the people in the image and what they look like, from their facial features, hair color, height, weight, clothing, and anything else that might be relevant.`;
+Always describe in vivid detail the people in the image and what they look like, from their facial features, hair color, height, weight, clothing, and anything else that might be relevant.
+Ensure if the image is a screenshot of a website, or message, that you describe the content of the website or message.
+Ensure if the image is a cross-post or repost of another image or person's content, that you make sure to mention that it is a repost or cross-post.`;

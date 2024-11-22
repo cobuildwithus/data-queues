@@ -1,4 +1,4 @@
-import { text, timestamp, integer, pgSchema } from 'drizzle-orm/pg-core';
+import { text, timestamp, integer, pgSchema, jsonb } from 'drizzle-orm/pg-core';
 
 // Define the schema
 const productionSchema = pgSchema('production');
@@ -43,6 +43,7 @@ export const farcasterCasts = productionSchema.table('farcaster_casts', {
   computedTags: text('computed_tags').array(),
   embedSummaries: text('embed_summaries').array(),
   storyIds: text('story_ids').array(),
+  impactVerifications: jsonb('impact_verifications'),
 });
 
 export type FarcasterCast = typeof farcasterCasts.$inferSelect;

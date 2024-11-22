@@ -29,6 +29,7 @@ const selectCasts = () => {
       computedTags: farcasterCasts.computedTags,
       embedSummaries: farcasterCasts.embedSummaries,
       storyIds: farcasterCasts.storyIds,
+      impactVerifications: farcasterCasts.impactVerifications,
       profile: {
         fid: farcasterProfiles.fid,
         fname: farcasterProfiles.fname,

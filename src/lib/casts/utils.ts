@@ -1,6 +1,4 @@
 import { Job } from 'bullmq';
-import { getGrantUpdateCastPrompt } from '../prompts/grant-update-cast';
-import { log } from '../helpers';
 import { getAndSaveUrlSummaries } from '../url-summaries/attachments';
 import { RedisClientType } from 'redis';
 import { CastWithParent } from '../../database/queries/casts/casts-with-parent';
