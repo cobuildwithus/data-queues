@@ -108,7 +108,7 @@ export async function saveUrlSummariesForCastHash(
   const existingCast = await farcasterDb
     .select({ embedSummaries: farcasterCasts.embedSummaries })
     .from(farcasterCasts)
-    .where(sql`hash = ${Buffer.from(castHash.replace('0x', ''), 'hex')}`)
+    .where(eq(farcasterCasts.hash, castHash))
     .limit(1);
 
   if (!existingCast.length) {
@@ -129,12 +129,7 @@ export async function saveUrlSummariesForCastHash(
   const d = await farcasterDb
     .update(farcasterCasts)
     .set({ embedSummaries: summaries })
-    .where(
-      sql`farcaster_casts.hash = ${Buffer.from(
-        castHash.replace('0x', ''),
-        'hex'
-      )}`
-    );
+    .where(eq(farcasterCasts.hash, castHash));
 
   log(`Saved ${d.rowCount} embed summaries to db`, job);
 

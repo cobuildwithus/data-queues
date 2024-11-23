@@ -8,6 +8,7 @@ import { farcasterDb } from '../database/farcasterDb';
 import { eq, sql } from 'drizzle-orm';
 import { flowsDb } from '../database/flowsDb';
 import { derivedData } from '../database/flows-schema';
+import { getCastHash } from '../lib/casts/utils';
 
 export const isGrantUpdateWorker = async (
   queueName: string,
@@ -33,17 +34,14 @@ export const isGrantUpdateWorker = async (
 
           if (result.isGrantUpdate && result.grantId) {
             // Convert the hexadecimal hash string to a Buffer
-            const castHashBuffer = Buffer.from(
-              cast.castHash.replace(/^0x/, ''),
-              'hex'
-            );
+            const castHash = getCastHash(cast.castHash);
 
             const updated = await farcasterDb
               .update(farcasterCasts)
               .set({
                 computedTags: sql`array_append(array_remove(array_append(array_remove(computed_tags, ${result.grantId}), ${result.grantId}), 'nouns-flows'), 'nouns-flows')`,
               })
-              .where(sql`hash = ${castHashBuffer}`)
+              .where(eq(farcasterCasts.hash, castHash))
               .returning();
 
             log(`Updated cast: ${updated[0].id}`, job);

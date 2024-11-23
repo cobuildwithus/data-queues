@@ -41,6 +41,9 @@ export const stories = webSchema.table('Stories', {
   grantId: text('grant_id'),
   parentFlowId: text('parent_flow_id'),
   tagline: text('tagline'),
+  castHashes: text('cast_hashes').array(),
+  mintUrls: text('mint_urls').array(),
+  infoNeededToComplete: text('info_needed_to_complete'),
 });
 
 export const grant = pgTable('Grant', {

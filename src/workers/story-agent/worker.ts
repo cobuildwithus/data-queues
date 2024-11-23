@@ -13,6 +13,7 @@ import { getFarcasterProfile } from '../../database/queries/profiles/get-profile
 import { getGrantStories } from '../../database/queries/stories/get-grant-stories';
 import { farcasterDb } from '../../database/farcasterDb';
 import { farcasterCasts } from '../../database/farcaster-schema';
+import { getCastHash } from '../../lib/casts/utils';
 
 const STORY_LOCK_PREFIX = 'story-locked-v1:';
 const LOCK_TTL = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
@@ -130,18 +131,10 @@ export const storyAgentWorker = async (
             log(`Generated story analysis for ID: ${story.newCastId}`, job);
             type StoryInsertModel = InferInsertModel<typeof stories>;
 
-            const profile = relevantCasts[0].profile?.fid;
-
-            if (!profile) {
-              throw new Error(
-                `No profile found for fid: ${relevantCasts[0].fid}, skipping`
-              );
-            }
-
             // Bulk insert stories into flowsDb
             const storiesToInsert: StoryInsertModel[] = analysis.map(
               (storyAnalysis) => ({
-                id: storyAnalysis.storyId || crypto.randomUUID(),
+                id: storyAnalysis.id || crypto.randomUUID(),
                 title: storyAnalysis.title,
                 summary: storyAnalysis.summary,
                 createdAt: new Date(storyAnalysis.createdAt),
@@ -154,10 +147,14 @@ export const storyAgentWorker = async (
                 complete: storyAnalysis.complete,
                 sources: storyAnalysis.sources,
                 mediaUrls: storyAnalysis.mediaUrls,
-                author: profile.toString() || undefined,
+                author: storyAnalysis.author?.toLowerCase(),
                 grantId: grant.id,
                 parentFlowId: parentGrant.id,
                 tagline: storyAnalysis.tagline,
+                edits: storyAnalysis.edits,
+                castHashes: storyAnalysis.castHashes,
+                infoNeededToComplete: storyAnalysis.infoNeededToComplete,
+                mintUrls: storyAnalysis.mintUrls,
               })
             );
 
@@ -185,25 +182,27 @@ export const storyAgentWorker = async (
               });
 
             // Create mapping of cast hashes to story IDs
-            const castHashToStoryId = analysis.reduce((acc, story, index) => {
-              story.castHashes.forEach((hash) => {
-                acc[hash] = storiesToInsert[index].id;
-              });
-              return acc;
-            }, {} as Record<string, string>);
+            const castHashToStoryId = analysis.reduce(
+              (acc, story, index) => {
+                story.castHashes.forEach((hash) => {
+                  acc[hash] = storiesToInsert[index].id;
+                });
+                return acc;
+              },
+              {} as Record<string, string>
+            );
 
             console.log('castHashToStoryId mapping:', castHashToStoryId);
 
             // Update each cast with its corresponding story ID
             for (const [hash, storyId] of Object.entries(castHashToStoryId)) {
+              const castHash = getCastHash(hash);
               await farcasterDb
                 .update(farcasterCasts)
                 .set({
                   storyIds: sql`array_append(story_ids, ${storyId})`,
                 })
-                .where(
-                  sql`hash = ${Buffer.from(hash.replace('0x', ''), 'hex')}`
-                );
+                .where(eq(farcasterCasts.hash, castHash));
             }
 
             log(

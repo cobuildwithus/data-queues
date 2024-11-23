@@ -12,11 +12,9 @@ function getEmbedUrls(embeds: string | null): string[] {
 
 function generateCastUrl(
   fname: string | undefined,
-  hash: string | null
+  hash: Buffer | null
 ): string {
-  return `https://warpcast.com/${fname}/0x${Buffer.from(hash || '').toString(
-    'hex'
-  )}`;
+  return `https://warpcast.com/${fname}/0x${hash?.toString('hex')}`;
 }
 
 function formatParentCastSection(
@@ -104,7 +102,7 @@ function formatRepliesSection(
   const replyTexts = replies
     .filter((reply) => reply.text && reply.hash)
     .map((reply) => {
-      const replyUrl = generateCastUrl(undefined, reply.hash!);
+      const replyUrl = generateCastUrl(undefined, getCastHash(reply.hash!));
       return `REPLY: ${reply.text}
 REPLY_URL: ${replyUrl}`;
     });
@@ -159,4 +157,8 @@ ${attachmentUrls}
 ${repliesSection}
 ${grantUpdateReason ? `IMPACT_VERIFICATION: ${grantUpdateReason}` : ''}
 ---`;
+}
+
+export function getCastHash(castHash: string): Buffer {
+  return Buffer.from(castHash.replace('0x', ''), 'hex');
 }
