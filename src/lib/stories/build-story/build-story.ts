@@ -12,6 +12,7 @@ import {
   getStoryObjectSchema,
   getStoryObjectSystemPrompt,
 } from './story-object';
+import { getRelatedCasts } from './get-related-casts';
 
 export async function buildStories(
   redisClient: RedisClientType,
@@ -97,5 +98,19 @@ async function buildStory(
   console.log(JSON.stringify(object, null, 2));
 
   const stories = object.stories;
-  return await populateGeneratedStories(object, stories, job, redisClient);
+  const populatedStories = await populateGeneratedStories(
+    object,
+    stories,
+    job,
+    redisClient
+  );
+
+  // for (const story of populatedStories) {
+  //   const relatedCasts = await getRelatedCasts(story, redisClient, job);
+  //   console.log({ relatedCasts });
+  //   throw new Error('stop');
+  //   // story.relatedCasts = relatedCasts;
+  // }
+
+  return populatedStories;
 }

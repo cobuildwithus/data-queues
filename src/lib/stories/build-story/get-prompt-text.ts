@@ -152,6 +152,8 @@ export function getTextFromUserMessage(
   - Dark humor and a cynical tone.
   - Ensure the piece reflects Thompson's unique voice and perspective.
   - Overall pushes a positive sum mindset for builders.
+
+  Don't use the word gonzo too much, but do embody the spirit of gonzo journalism.
   
   Begin your response by analyzing the information in <story_planning> tags, then proceed to create stories based on your analysis.`;
 
