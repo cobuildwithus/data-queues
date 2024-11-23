@@ -87,5 +87,6 @@ export function getStoryObjectSystemPrompt() {
 
     Do not summarize the summary or stories in any way, use the same text as provided to generate the objects.
     Do not remove the headers from the story summary or otherwise alter the text or data provided to you.
-    Do not forget to include all the fields like castHashes, edits, mintUrls, infoNeededToComplete, etc.`;
+    Do not forget to include all the fields like castHashes, edits, mintUrls, infoNeededToComplete, etc.
+    Do not forget to return completeness and createdAt fields.`;
 }

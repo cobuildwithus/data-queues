@@ -193,8 +193,6 @@ export const storyAgentWorker = async (
               {} as Record<string, string>
             );
 
-            console.log('castHashToStoryId mapping:', castHashToStoryId);
-
             // Update each cast with its corresponding story ID
             for (const [hash, storyId] of Object.entries(castHashToStoryId)) {
               const castHash = getCastHash(hash);

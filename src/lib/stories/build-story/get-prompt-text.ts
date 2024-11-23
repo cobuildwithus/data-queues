@@ -70,13 +70,17 @@ export function getTextFromUserMessage(
   m. Any casts or external URLs should go in the sources array.
   n. If the story is particularly exciting or impactful with lots of details, feel free to make it longer than a few paragraphs.
   o. If there are a lot of fun exciting details or quotes, feel free to make the paragraphs much more detailed.
+  p. If an existing story already exists for a given topic, impact, or event, don't create a new story.
+  q. However, if the existing story is incomplete, you should add more context to it if you can, and make sure to return the id field of the existing story as part of your updated story.
+  r. Do not forget to return completeness and createdAt fields.
+  s. Be sure to mention builder names and be specific about the action and impact happening.
   
   2. Create the story:
   Based on your analysis, construct a story using the following structure:
   
   <story>
   {
-    "title": "Concise, unique title (max 7 words)",
+    "title": "Concise, unique title (max 6 words)",
     "tagline": "Catchy phrase capturing the essence (max 11 words)",
     "summary": "
   # First Section Header
@@ -126,15 +130,15 @@ export function getTextFromUserMessage(
   - Only create stories with at least two sources
   - Prioritize exciting and impactful stories relevant to the parent flow
   - Prefer making multiple stories over one long story
-  - Include images inside the story if relevant, as markdown images from cast attachments
+  - Include images inside the story if relevant, as markdown images from cast attachments, but only from casts that are included in the casts hashes array or sources array.
+  - DO NOT embed images in markdown from casts that are not a part of the story, or .m3u8 or zora.co links
   - Only use images from casts that are part of the story
-  - No .m3u8 or zora.co links for images
   - Only pass Farcaster FIDs to participants array
   - Make titles unique to grant and include recipient name if needed
   - Use specific, descriptive section headers
   - Link to external sources where possible
   - Use personal names rather than impersonal titles
-  - Created at should be when impact occurred
+  - Created at should be when impact occurred, or when the first cast happened
   - Don't be cringy about nounish values
   - Do not use terms like web or web3 or nft or crypto or web culture or blockchain.
   - Stories should highlight impact fitting both grant deliverables and parent flow
