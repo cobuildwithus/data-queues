@@ -97,7 +97,7 @@ export const isGrantUpdateWorker = async (
 
         let storyQueueJob;
         if (storyJobs.length > 0) {
-          storyQueueJob = await storyAgentQueue.add(queueJobName, storyJobs);
+          // storyQueueJob = await storyAgentQueue.add(queueJobName, storyJobs);
         }
 
         log(`Added ${storyJobs.length} story jobs to queue`, job);
@@ -105,7 +105,7 @@ export const isGrantUpdateWorker = async (
         return {
           jobId: job.id,
           results,
-          storyQueueJobId: storyQueueJob?.id || '',
+          // storyQueueJobId: storyQueueJob?.id || '',
         };
       } catch (error) {
         console.error('Error processing casts:', error);
