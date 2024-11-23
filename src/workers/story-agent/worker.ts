@@ -138,6 +138,7 @@ export const storyAgentWorker = async (
                 title: storyAnalysis.title,
                 summary: storyAnalysis.summary,
                 createdAt: new Date(storyAnalysis.createdAt),
+                updatedAt: new Date(storyAnalysis.createdAt),
                 keyPoints: storyAnalysis.keyPoints,
                 participants: storyAnalysis.participants,
                 headerImage: storyAnalysis.headerImage,
