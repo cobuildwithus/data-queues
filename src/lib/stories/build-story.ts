@@ -10,8 +10,9 @@ import { GrantStories } from '../../database/queries/stories/get-grant-stories';
 import { log } from '../helpers';
 import { getFarcasterProfilesByFnames } from '../../database/queries/profiles/get-profile';
 import { getAllGrantRecipients } from '../../database/queries/grants/get-all-grant-recipients';
-import { buildParticipantsMap } from './build-participants-map';
-import { getHeaderImage } from './get-header-image';
+import { buildParticipantsMap } from './participants/build-participants-map';
+import { getHeaderImage } from './header-image/get-header-image';
+import { getMediaUrls } from './media-urls/get-media-urls';
 
 const DR_GONZO_ADDRESS = '0xa253E24feEAFf705542dC22C5Ad43Eb3E4b345Bd';
 
@@ -192,9 +193,6 @@ async function buildStory(
               createdAt: z
                 .string()
                 .describe('The timestamp of the story impact'),
-              mediaUrls: z
-                .array(z.string())
-                .describe('Media urls from the story'),
               edits: z
                 .array(
                   z.object({
@@ -267,8 +265,14 @@ async function buildStory(
   const stories = object.stories;
 
   const participantsMap = await buildParticipantsMap(object);
+  const mediaUrls = await Promise.all(
+    stories.map((story) => getMediaUrls(story, job, redisClient))
+  );
+
   const headerImages = await Promise.all(
-    stories.map((story) => getHeaderImage(story, job, redisClient))
+    stories.map((story, index) =>
+      getHeaderImage(story, mediaUrls[index] || [], job, redisClient)
+    )
   );
 
   return object.stories.map((story, index) => ({
@@ -279,6 +283,7 @@ async function buildStory(
       .map((participant) => participantsMap[participant] || '')
       .filter(Boolean),
     id: story.storyId || '',
+    mediaUrls: mediaUrls[index] || [],
     complete: headerImages[index] ? story.complete : false,
     infoNeededToComplete: headerImages[index]
       ? story.infoNeededToComplete
@@ -343,17 +348,17 @@ a. Summarize key themes from the grant description
 b. List and categorize relevant information from casts
 c. Identify potential story angles and their supporting evidence
 d. Evaluate completeness of information for each potential story
-e. Identify potential media urls from cast attachments (videos or images)
-f. Check for any quotes that can be included
-g. Group related posts into coherent narratives and identify major themes
-h. Consider chronological order and relationships between posts
-i. Extract key information and quotes directly from cast text
-j. If you can't find any information related to the grant, it's acceptable to return an empty response.
-k. Only add images from casts that are relevant to the story and fit the location, event, or impact.
-l. Only add casts that are relevant to the story and fit the location, event, or impact.
-m. Feel free to add links to external sources in the sources array if relevant.
-n. Make sure to always include relevant videos from casts especially if they are part of the story. The video link format is https://stream.warpcast.com. They should go in the mediaUrls array.
-o. Any casts or external URLs should go in the sources array.
+e. Check for any quotes that can be included
+f. Group related posts into coherent narratives and identify major themes
+g. Consider chronological order and relationships between posts
+h. Extract key information and quotes directly from cast text
+i. If you can't find any information related to the grant, it's acceptable to return an empty response.
+j. Only add images from casts that are relevant to the story and fit the location, event, or impact.
+k. Only add casts that are relevant to the story and fit the location, event, or impact.
+l. Feel free to add links to external sources in the sources array if relevant.
+m. Any casts or external URLs should go in the sources array.
+n. If the story is particularly exciting or impactful with lots of details, feel free to make it longer than a few paragraphs.
+o. If there are a lot of fun exciting details or quotes, feel free to make the paragraphs much more detailed.
 
 2. Create the story:
 Based on your analysis, construct a story using the following structure:
@@ -371,7 +376,7 @@ First paragraph of the summary...
 
 Second paragraph of the summary...
 
-(2-5 paragraphs total)
+(2-7 paragraphs total)
   ",
   "participants": ["Farcaster username 1", "Farcaster username 2"],
   "createdAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
@@ -388,7 +393,6 @@ Second paragraph of the summary...
   "sentiment": "positive" | "negative" | "neutral",
   "complete": true | false,
   "sources": ["Source URL 1", "Source URL 2"],
-  "mediaUrls": ["Media URL 1", "Media URL 2"],
   "mintUrls": ["Mint URL 1", "Mint URL 2"],
   "edits": [
     {

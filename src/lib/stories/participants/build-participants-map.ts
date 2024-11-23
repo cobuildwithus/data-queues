@@ -1,5 +1,5 @@
-import { getAllGrantRecipients } from '../../database/queries/grants/get-all-grant-recipients';
-import { getFarcasterProfilesByFnames } from '../../database/queries/profiles/get-profile';
+import { getAllGrantRecipients } from '../../../database/queries/grants/get-all-grant-recipients';
+import { getFarcasterProfilesByFnames } from '../../../database/queries/profiles/get-profile';
 
 export async function buildParticipantsMap(object: {
   stories: Array<{

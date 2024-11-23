@@ -44,6 +44,7 @@ export const stories = webSchema.table('Stories', {
   castHashes: text('cast_hashes').array(),
   mintUrls: text('mint_urls').array(),
   infoNeededToComplete: text('info_needed_to_complete'),
+  edits: jsonb('edits'),
 });
 
 export const grant = pgTable('Grant', {
