@@ -1,4 +1,4 @@
-import { StoryAnalysis } from '../build-story';
+import { StoryAnalysis } from '../build-story/story-analysis';
 import { anthropicModel, openAIModel, retryAiCallWithBackoff } from '../../ai';
 import { generateObject } from 'ai';
 import { z } from 'zod';

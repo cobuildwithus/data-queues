@@ -2,7 +2,7 @@ import { Worker, Job, RedisOptions, ClusterOptions, Queue } from 'bullmq';
 import { JobBody, StoryJobBody } from '../../types/job';
 import { log } from '../../lib/helpers';
 import { RedisClientType } from 'redis';
-import { buildStories } from '../../lib/stories/build-story';
+import { buildStories } from '../../lib/stories/build-story/build-story';
 import { getGrantAndParentGrant } from '../../database/queries/grants/grant-and-parent';
 import { eq } from 'drizzle-orm';
 import { getAllCastsForStories } from '../../database/queries/casts/casts-for-story';
