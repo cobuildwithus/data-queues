@@ -29,10 +29,10 @@ export const handleBulkAddFarcasterAgentJob = (
         return;
       }
 
-      // Validate agentFid is a string
-      if (typeof agentFid !== 'string') {
+      // Validate agentFid is a number
+      if (typeof agentFid !== 'number') {
         reply.status(400).send({
-          error: 'agentFid must be a string',
+          error: 'agentFid must be a number',
         });
         return;
       }
