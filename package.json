@@ -1,0 +1,79 @@
+{
+  "name": "queue-service",
+  "version": "0.1.0",
+  "license": "MIT",
+  "author": "Faraz Patankar",
+  "main": "dist/index.js",
+  "module": "dist/queue-service.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "dts build",
+    "lint": "dts lint",
+    "watch": "dts watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc",
+    "db:generate": "npx drizzle-kit generate --config=./src/drizzle.config.ts",
+    "db:push": "npx drizzle-kit push --config=./src/drizzle.config.ts",
+    "generate": "wagmi generate --config src/wagmi.config.ts"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "dts lint"
+    }
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.1",
+    "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/pg": "^8.11.10",
+    "dts-cli": "^2.0.5",
+    "husky": "^8.0.1",
+    "tslib": "^2.4.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^0.0.56",
+    "@ai-sdk/google": "^0.0.55",
+    "@ai-sdk/openai": "^0.0.72",
+    "@bull-board/api": "^6.3.3",
+    "@bull-board/fastify": "^6.3.3",
+    "@bull-board/ui": "^6.3.3",
+    "@distube/ytdl-core": "^4.15.1",
+    "@google/generative-ai": "^0.21.0",
+    "@langchain/anthropic": "^0.3.8",
+    "@langchain/core": "^0.3.19",
+    "@langchain/openai": "^0.3.14",
+    "@tensorflow-models/face-detection": "^1.0.3",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@wagmi/cli": "^2.1.18",
+    "ai": "^3.4.33",
+    "axios": "^1.7.7",
+    "bullmq": "^5.23.0",
+    "dotenv": "^16.4.5",
+    "drizzle-kit": "^0.27.1",
+    "drizzle-orm": "^0.36.0",
+    "envsafe": "^2.0.3",
+    "fastify": "^5.1.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "langchain": "^0.3.6",
+    "open-graph-scraper": "^6.8.2",
+    "openai": "^4.70.3",
+    "pg": "^8.13.1",
+    "redis": "^4.7.0",
+    "sharp": "^0.33.5",
+    "viem": "^2.21.48",
+    "zod": "^3.23.8"
+  }
+}
