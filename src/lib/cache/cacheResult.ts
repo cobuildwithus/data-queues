@@ -1,7 +1,8 @@
 import { RedisClientType } from 'redis';
 
 // const CACHE_ENABLED = process.env.NODE_ENV !== 'development';
-const CACHE_ENABLED = false;
+const CACHE_ENABLED = true;
+
 /**
  * Generic cache function that stores results in Redis.
  * Caching is disabled in development environment.
