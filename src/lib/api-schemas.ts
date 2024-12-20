@@ -173,7 +173,7 @@ export const farcasterAgentSchema = {
           type: 'object',
           required: ['agentFid', 'customInstructions'],
           properties: {
-            agentFid: { type: 'string' },
+            agentFid: { type: 'number' },
             customInstructions: { type: 'string' },
             replyToCastId: { type: ['number', 'null'] },
             postToChannelId: { type: ['string', 'null'] },

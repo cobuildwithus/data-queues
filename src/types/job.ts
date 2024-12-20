@@ -44,7 +44,7 @@ export interface StoryJobBody {
 }
 
 export interface FarcasterAgentJobBody {
-  agentFid: string;
+  agentFid: number;
   customInstructions: string;
   replyToCastId: number | null;
   postToChannelId: string | null;
