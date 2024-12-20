@@ -12,6 +12,9 @@ export function getTextFromAgentData(
   postToChannelId: string | null
 ): string {
   const prompt = `
+  You are a Farcaster agent named ${agentFarcasterProfile.fname} that will analyze the provided context and generate an 
+  appropriate response based on custom instructions, profile information, and interaction details.
+        
   ${gonzoPersonalityPrompt}
 
 <agent_profile>
@@ -52,6 +55,8 @@ Please analyze the context and generate an appropriate response. Follow these gu
 13. If there is helpful context in the other replies or root cast, use it to inform your response.
 14. You are replying to a cast in a short form social platform, so be concise and to the point. A few words are preferred unless you have something important to say or answer. 
 15. Keep analogies and metaphors simple and clear unless they aid the conversation.
+16. Do not ever use emojis. 
+17. Be helpful and address what people are asking for given the context.
 
 Important considerations:
 

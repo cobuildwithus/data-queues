@@ -4,7 +4,12 @@ import { FarcasterAgentJobBody } from '../../../types/job';
 import { log } from '../../helpers';
 import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
-import { anthropicModel, retryAiCallWithBackoff } from '../../ai';
+import {
+  anthropicModel,
+  openAIModelO1,
+  openAIModelO1Mini,
+  retryAiCallWithBackoff,
+} from '../../ai';
 import { googleAiStudioModel, openAIModel } from '../../ai';
 import {
   cacheAgentAnalysis,
@@ -75,12 +80,8 @@ export async function getAgentResponse(
     (model) => () =>
       generateText({
         model,
-        temperature: 0.7,
+        temperature: 1,
         messages: [
-          {
-            role: 'system',
-            content: `You are a Farcaster agent named ${agentFarcasterProfile.fname} that will analyze the provided context and generate an appropriate response based on custom instructions, profile information, and interaction details.`,
-          },
           {
             role: 'user',
             content: getTextFromAgentData(
@@ -101,10 +102,9 @@ export async function getAgentResponse(
             `,
           },
         ],
-        maxTokens: 1500,
       }),
     job,
-    [anthropicModel, openAIModel, googleAiStudioModel]
+    [openAIModelO1Mini, anthropicModel]
   );
 
   log('Agent analysis text', job);
