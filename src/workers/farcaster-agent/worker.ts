@@ -1,6 +1,7 @@
 import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
 import { FarcasterAgentJobBody } from '../../types/job';
 import { RedisClientType } from 'redis';
+import { getAgentResponse } from '../../lib/farcaster-agent/analysis/get-response';
 
 export const farcasterAgentWorker = async (
   queueName: string,
@@ -14,6 +15,8 @@ export const farcasterAgentWorker = async (
 
       try {
         console.log({ jobData });
+        const response = await getAgentResponse(redisClient, jobData, job);
+        console.log({ response });
       } catch (error) {
         console.error('Error processing agent request:', error);
         throw error;

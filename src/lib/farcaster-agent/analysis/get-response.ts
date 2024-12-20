@@ -1,0 +1,164 @@
+import { generateObject, generateText } from 'ai';
+import { z } from 'zod';
+import { FarcasterAgentJobBody } from '../../../types/job';
+import { log } from '../../helpers';
+import { RedisClientType } from 'redis';
+import { Job } from 'bullmq';
+import { anthropicModel, retryAiCallWithBackoff } from '../../ai';
+import { googleAiStudioModel, openAIModel } from '../../ai';
+import {
+  cacheAgentAnalysis,
+  FarcasterAgentAnalysis,
+  getCachedAgentAnalysis,
+} from '../cache';
+import { getFarcasterProfile } from '../../../database/queries/profiles/get-profile';
+import { createHash } from 'crypto';
+import { getCastsForAgent } from '../../../database/queries/casts/casts-for-agent';
+import { getBuilderProfile } from '../../../database/queries/profiles/get-builder-profile';
+import { getTextFromAgentData } from '../prompt-text';
+import { formatCastForPrompt } from '../cast-utils';
+
+export async function getAgentResponse(
+  redisClient: RedisClientType,
+  data: FarcasterAgentJobBody,
+  job: Job
+): Promise<FarcasterAgentAnalysis> {
+  if (!data.customInstructions) {
+    throw new Error('Custom instructions are required');
+  }
+
+  // Create hash of entire job data to use as cache key
+  const jobHash = createHash('sha256').update(JSON.stringify(data)).digest();
+
+  // Check cache first
+  const cachedAnalysis = await getCachedAgentAnalysis(redisClient, jobHash);
+  if (cachedAnalysis) {
+    log('Returning cached agent analysis', job);
+    return cachedAnalysis;
+  }
+
+  const [agentFarcasterProfile, agentBuilderProfile] = await Promise.all([
+    getFarcasterProfile(data.agentFid),
+    getBuilderProfile(data.agentFid),
+  ]);
+
+  // if (!agentFarcasterProfile || !agentBuilderProfile) {
+  if (!agentFarcasterProfile) {
+    throw new Error(`Agent profiles not found: ${data.agentFid}`);
+  }
+
+  // If there's a reply cast ID, we need to fetch that cast's content
+  let mainCastContent = '';
+  let rootCastContent = '';
+  let otherRepliesContent = '';
+  if (data.replyToCastId) {
+    log('Fetching reply cast content', job);
+    const cast = await getCastsForAgent(data.replyToCastId);
+
+    if (!cast || !cast.fid) {
+      throw new Error(`Reply cast not found: ${data.replyToCastId}`);
+    }
+
+    const [castContent, castAuthorBuilderProfile] = await Promise.all([
+      formatCastForPrompt(cast, redisClient, job),
+      getBuilderProfile(cast.fid),
+    ]);
+
+    mainCastContent = castContent.mainCastText;
+    rootCastContent = castContent.rootCastText;
+    otherRepliesContent = castContent.otherRepliesText;
+
+    console.log({ castContent, castAuthorBuilderProfile, cast });
+  }
+
+  const text = await retryAiCallWithBackoff(
+    (model) => () =>
+      generateText({
+        model,
+        temperature: 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a Farcaster agent named ${agentFarcasterProfile.fname} that will analyze the provided context and generate an appropriate response based on custom instructions, profile information, and interaction details.`,
+          },
+          {
+            role: 'user',
+            content: getTextFromAgentData(
+              data.customInstructions,
+              agentFarcasterProfile,
+              agentBuilderProfile?.content || '',
+              data.replyToCastId,
+              mainCastContent,
+              rootCastContent,
+              otherRepliesContent,
+              data.postToChannelId
+            ),
+          },
+          {
+            role: 'assistant',
+            content: `
+            <story_planning>
+            `,
+          },
+        ],
+        maxTokens: 1500,
+      }),
+    job,
+    [anthropicModel, openAIModel, googleAiStudioModel]
+  );
+
+  log('Agent analysis text', job);
+  log(text.text, job);
+
+  const { object } = await retryAiCallWithBackoff(
+    (model) => () =>
+      generateObject({
+        model,
+        schema: z.object({
+          shouldReply: z.boolean(),
+          proposedReply: z.string(),
+          reason: z.string().describe('Reasoning behind the response'),
+          confidenceScore: z
+            .number()
+            .describe('Confidence in the response appropriateness'),
+          channelId: z
+            .string()
+            .optional()
+            .describe(
+              'Channel ID if response should be posted to a specific channel'
+            ),
+        }),
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are analyzing whether and how to respond to a Farcaster interaction based on custom instructions.',
+          },
+          {
+            role: 'user',
+            content: text.text,
+          },
+        ],
+      }),
+    job,
+    [anthropicModel, openAIModel, googleAiStudioModel]
+  );
+
+  log('Agent analysis result', job);
+  log(JSON.stringify(object, null, 2), job);
+  const result: FarcasterAgentAnalysis = {
+    shouldReply: object.shouldReply,
+    proposedReply: object.proposedReply,
+    reason: object.reason,
+    confidenceScore: object.confidenceScore,
+    agentFid: data.agentFid,
+    replyToCastId: data.replyToCastId || null,
+    customInstructions: data.customInstructions,
+    channelId: object.channelId || null,
+  };
+
+  // Cache the analysis
+  await cacheAgentAnalysis(redisClient, jobHash, result);
+
+  return result;
+}
