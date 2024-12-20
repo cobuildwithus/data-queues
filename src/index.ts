@@ -20,15 +20,23 @@ import { handleBuilderProfileJob } from './jobs/add-builder-profile-job';
 import { handleBulkAddStoryJob } from './jobs/add-bulk-story-job';
 import { setupQueues } from './setup-queues';
 import { handleBulkAddFarcasterAgentJob } from './jobs/add-bulk-farcaster-agent';
+import {
+  FarcasterAgentJobBody,
+  StoryJobBody,
+  BuilderProfileJobBody,
+  IsGrantUpdateJobBody,
+  JobBody,
+  DeletionJobBody,
+} from './types/job';
 
 const setupServer = (queues: {
-  embeddingsQueue: Queue;
-  deletionQueue: Queue;
-  bulkEmbeddingsQueue: Queue;
-  isGrantUpdateQueue: Queue;
-  builderProfileQueue: Queue;
-  storyQueue: Queue;
-  farcasterAgentQueue: Queue;
+  embeddingsQueue: Queue<JobBody>;
+  deletionQueue: Queue<DeletionJobBody>;
+  bulkEmbeddingsQueue: Queue<JobBody[]>;
+  isGrantUpdateQueue: Queue<IsGrantUpdateJobBody[]>;
+  builderProfileQueue: Queue<BuilderProfileJobBody[]>;
+  storyQueue: Queue<StoryJobBody[]>;
+  farcasterAgentQueue: Queue<FarcasterAgentJobBody>;
 }) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();

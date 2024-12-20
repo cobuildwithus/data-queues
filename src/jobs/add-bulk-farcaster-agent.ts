@@ -2,7 +2,9 @@ import { Queue } from 'bullmq';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { FarcasterAgentJobBody } from '../types/job';
 
-export const handleBulkAddFarcasterAgentJob = (queue: Queue) => {
+export const handleBulkAddFarcasterAgentJob = (
+  queue: Queue<FarcasterAgentJobBody>
+) => {
   return async (
     req: FastifyRequest<{ Body: { jobs: FarcasterAgentJobBody[] } }>,
     reply: FastifyReply
@@ -60,13 +62,19 @@ export const handleBulkAddFarcasterAgentJob = (queue: Queue) => {
       }
     }
 
-    const jobName = `bulk-farcaster-agent-${Date.now()}`;
-    const job = await queue.add(jobName, jobs);
+    const addedJobs = await Promise.all(
+      jobs.map(async (job) => {
+        const jobName = `farcaster-agent-${Date.now()}-${job.agentFid}`;
+        return queue.add(jobName, job);
+      })
+    );
 
     reply.send({
       ok: true,
-      jobName,
-      jobId: job.id,
+      jobs: addedJobs.map((job) => ({
+        jobName: job.name,
+        jobId: job.id,
+      })),
     });
   };
 };
