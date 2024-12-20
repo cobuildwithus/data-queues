@@ -19,8 +19,7 @@ Please analyze these images and select the best one for the story header based o
 Select the image that best represents the story's main theme or impact. Return empty string if:
 - The images are screenshots of websites, receipts, or other utilitarian content
 - The images contain mostly text
-- The images are low quality or poorly composed
-- The images don't visually represent the story's key themes
+- The images are very low quality
 - No images meet the quality and relevance criteria above
 
 Return a JSON object with:
