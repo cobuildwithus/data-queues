@@ -1,15 +1,6 @@
 import fastify, { FastifyInstance } from 'fastify';
 import { Server, IncomingMessage, ServerResponse } from 'http';
 import { Queue } from 'bullmq';
-import {
-  createQueue,
-  setupQueueProcessor,
-  setupDeletionQueueProcessor,
-  setupBulkQueueProcessor,
-  setupIsGrantUpdateQueueProcessor,
-  setupBuilderProfileQueueProcessor,
-  setupStoryQueueProcessor,
-} from './queue';
 import 'dotenv/config';
 import { handleAddEmbeddingJob } from './jobs/addEmbeddingJob';
 import { handleDeleteEmbedding } from './jobs/deleteEmbedding';
@@ -25,46 +16,8 @@ import {
 import { handleBulkAddEmbeddingJob } from './jobs/addBulkEmbeddingJob';
 import { handleBulkAddIsGrantUpdateJob } from './jobs/add-bulk-is-grant-update-job';
 import { handleBuilderProfileJob } from './jobs/add-builder-profile-job';
-import {
-  BuilderProfileJobBody,
-  DeletionJobBody,
-  IsGrantUpdateJobBody,
-  JobBody,
-  StoryJobBody,
-} from './types/job';
 import { handleBulkAddStoryJob } from './jobs/add-bulk-story-job';
-
-const setupQueue = async () => {
-  const embeddingsQueue = createQueue<JobBody>('EmbeddingsQueue');
-  const deletionQueue = createQueue<DeletionJobBody>('DeletionQueue');
-  const bulkEmbeddingsQueue = createQueue<JobBody[]>('BulkEmbeddingsQueue');
-  const isGrantUpdateQueue =
-    createQueue<IsGrantUpdateJobBody[]>('IsGrantUpdateQueue');
-  const builderProfileQueue = createQueue<BuilderProfileJobBody[]>(
-    'BuilderProfileQueue'
-  );
-  const storyQueue = createQueue<StoryJobBody[]>('StoryQueue');
-
-  await setupQueueProcessor(embeddingsQueue.name);
-  await setupDeletionQueueProcessor(deletionQueue.name);
-  await setupBulkQueueProcessor(bulkEmbeddingsQueue.name);
-
-  await setupIsGrantUpdateQueueProcessor(isGrantUpdateQueue.name, storyQueue);
-  await setupBuilderProfileQueueProcessor(
-    builderProfileQueue.name,
-    bulkEmbeddingsQueue
-  );
-  await setupStoryQueueProcessor(storyQueue.name, bulkEmbeddingsQueue);
-
-  return {
-    embeddingsQueue,
-    deletionQueue,
-    bulkEmbeddingsQueue,
-    isGrantUpdateQueue,
-    builderProfileQueue,
-    storyQueue,
-  };
-};
+import { setupQueues } from './setup-queues';
 
 const setupServer = (queues: {
   embeddingsQueue: Queue;
@@ -73,6 +26,7 @@ const setupServer = (queues: {
   isGrantUpdateQueue: Queue;
   builderProfileQueue: Queue;
   storyQueue: Queue;
+  farcasterAgentQueue: Queue;
 }) => {
   const server: FastifyInstance<Server, IncomingMessage, ServerResponse> =
     fastify();
@@ -84,6 +38,7 @@ const setupServer = (queues: {
     queues.isGrantUpdateQueue,
     queues.builderProfileQueue,
     queues.storyQueue,
+    queues.farcasterAgentQueue,
   ]);
 
   server.post(
@@ -150,7 +105,7 @@ const run = async () => {
     throw new Error('API_KEY environment variable is required');
   }
 
-  const queues = await setupQueue();
+  const queues = await setupQueues();
   const server = setupServer(queues);
 
   await server.listen({ port: Number(process.env.PORT), host: '::' });
