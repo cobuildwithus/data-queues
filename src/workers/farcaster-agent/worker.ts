@@ -1,5 +1,5 @@
-import { Worker, Job, RedisOptions, ClusterOptions, Queue } from 'bullmq';
-import { FarcasterAgentJobBody, StoryJobBody } from '../../types/job';
+import { Worker, Job, RedisOptions, ClusterOptions } from 'bullmq';
+import { FarcasterAgentJobBody } from '../../types/job';
 import { RedisClientType } from 'redis';
 
 export const farcasterAgentWorker = async (
@@ -13,8 +13,9 @@ export const farcasterAgentWorker = async (
       const jobData = job.data;
 
       try {
+        console.log({ jobData });
       } catch (error) {
-        console.error('Error processing casts:', error);
+        console.error('Error processing agent request:', error);
         throw error;
       }
     },

@@ -12,12 +12,14 @@ import {
   isGrantUpdateSchema,
   builderProfileSchema,
   storySchema,
+  farcasterAgentSchema,
 } from './lib/api-schemas';
 import { handleBulkAddEmbeddingJob } from './jobs/addBulkEmbeddingJob';
 import { handleBulkAddIsGrantUpdateJob } from './jobs/add-bulk-is-grant-update-job';
 import { handleBuilderProfileJob } from './jobs/add-builder-profile-job';
 import { handleBulkAddStoryJob } from './jobs/add-bulk-story-job';
 import { setupQueues } from './setup-queues';
+import { handleBulkAddFarcasterAgentJob } from './jobs/add-bulk-farcaster-agent';
 
 const setupServer = (queues: {
   embeddingsQueue: Queue;
@@ -93,6 +95,15 @@ const setupServer = (queues: {
       schema: storySchema,
     },
     handleBulkAddStoryJob(queues.storyQueue)
+  );
+
+  server.post(
+    '/bulk-add-farcaster-agent',
+    {
+      preHandler: validateApiKey,
+      schema: farcasterAgentSchema,
+    },
+    handleBulkAddFarcasterAgentJob(queues.farcasterAgentQueue)
   );
 
   server.setErrorHandler(handleError);

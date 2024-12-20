@@ -1,0 +1,72 @@
+import { Queue } from 'bullmq';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { FarcasterAgentJobBody } from '../types/job';
+
+export const handleBulkAddFarcasterAgentJob = (queue: Queue) => {
+  return async (
+    req: FastifyRequest<{ Body: { jobs: FarcasterAgentJobBody[] } }>,
+    reply: FastifyReply
+  ) => {
+    const { jobs } = req.body;
+
+    // Validate each job in the array
+    for (const job of jobs) {
+      const { agentFid, customInstructions, replyToCastId, postToChannelId } =
+        job;
+
+      const missingFields = [];
+      if (!agentFid) missingFields.push('agentFid');
+      if (!customInstructions) missingFields.push('customInstructions');
+
+      if (missingFields.length > 0) {
+        reply.status(400).send({
+          error: `Missing required fields in one or more jobs: ${missingFields.join(
+            ', '
+          )}`,
+        });
+        return;
+      }
+
+      // Validate agentFid is a string
+      if (typeof agentFid !== 'string') {
+        reply.status(400).send({
+          error: 'agentFid must be a string',
+        });
+        return;
+      }
+
+      // Validate customInstructions is a string
+      if (typeof customInstructions !== 'string') {
+        reply.status(400).send({
+          error: 'customInstructions must be a string',
+        });
+        return;
+      }
+
+      // Validate replyToCastId is a number or null if provided
+      if (replyToCastId !== null && typeof replyToCastId !== 'number') {
+        reply.status(400).send({
+          error: 'replyToCastId must be a number or null',
+        });
+        return;
+      }
+
+      // Validate postToChannelId is a string or null if provided
+      if (postToChannelId !== null && typeof postToChannelId !== 'string') {
+        reply.status(400).send({
+          error: 'postToChannelId must be a string or null',
+        });
+        return;
+      }
+    }
+
+    const jobName = `bulk-farcaster-agent-${Date.now()}`;
+    const job = await queue.add(jobName, jobs);
+
+    reply.send({
+      ok: true,
+      jobName,
+      jobId: job.id,
+    });
+  };
+};
