@@ -56,6 +56,7 @@ export async function getAgentResponse(
   let mainCastContent = '';
   let rootCastContent = '';
   let otherRepliesContent = '';
+  let castAuthorBuilderProfile: string | null = null;
   if (data.replyToCastId) {
     log('Fetching reply cast content', job);
     const cast = await getCastsForAgent(data.replyToCastId);
@@ -64,16 +65,20 @@ export async function getAgentResponse(
       throw new Error(`Reply cast not found: ${data.replyToCastId}`);
     }
 
-    const [castContent, castAuthorBuilderProfile] = await Promise.all([
+    const [castContent, castAuthor] = await Promise.all([
       formatCastForPrompt(cast, redisClient, job),
       getBuilderProfile(cast.fid),
     ]);
 
+    if (castAuthor) {
+      castAuthorBuilderProfile = castAuthor.content;
+    }
+
+    console.log({ castContent });
+
     mainCastContent = castContent.mainCastText;
     rootCastContent = castContent.rootCastText;
     otherRepliesContent = castContent.otherRepliesText;
-
-    console.log({ castContent, castAuthorBuilderProfile, cast });
   }
 
   const text = await retryAiCallWithBackoff(
@@ -92,7 +97,7 @@ export async function getAgentResponse(
               mainCastContent,
               rootCastContent,
               otherRepliesContent,
-              data.postToChannelId
+              castAuthorBuilderProfile
             ),
           },
           {
@@ -104,7 +109,7 @@ export async function getAgentResponse(
         ],
       }),
     job,
-    [openAIModelO1Mini, anthropicModel]
+    [anthropicModel, openAIModelO1Mini]
   );
 
   log('Agent analysis text', job);
@@ -121,12 +126,6 @@ export async function getAgentResponse(
           confidenceScore: z
             .number()
             .describe('Confidence in the response appropriateness'),
-          channelId: z
-            .string()
-            .optional()
-            .describe(
-              'Channel ID if response should be posted to a specific channel'
-            ),
         }),
         messages: [
           {
@@ -154,7 +153,6 @@ export async function getAgentResponse(
     agentFid: data.agentFid,
     replyToCastId: data.replyToCastId || null,
     customInstructions: data.customInstructions,
-    channelId: object.channelId || null,
   };
 
   // Cache the analysis

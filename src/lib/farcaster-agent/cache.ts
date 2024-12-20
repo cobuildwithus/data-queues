@@ -10,7 +10,6 @@ export interface FarcasterAgentAnalysis {
   replyToCastId: number | null;
   agentFid: number;
   customInstructions: string;
-  channelId: string | null;
 }
 
 export async function getCachedAgentAnalysis(
