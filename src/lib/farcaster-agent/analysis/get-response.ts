@@ -74,6 +74,10 @@ export async function getAgentResponse(
 
     if (castAuthor) {
       castAuthorBuilderProfile = castAuthor.content;
+    } else {
+      throw new Error(
+        `Replying to cast author builder profile not found: ${cast.fid}`
+      );
     }
 
     authorGrants = cast.authorGrants;
