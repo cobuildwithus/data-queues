@@ -18,7 +18,10 @@ import {
 } from '../cache';
 import { getFarcasterProfile } from '../../../database/queries/profiles/get-profile';
 import { createHash } from 'crypto';
-import { getCastsForAgent } from '../../../database/queries/casts/casts-for-agent';
+import {
+  CastWithParentAndReplies,
+  getCastsForAgent,
+} from '../../../database/queries/casts/casts-for-agent';
 import { getBuilderProfile } from '../../../database/queries/profiles/get-builder-profile';
 import { getTextFromAgentData } from '../prompt-text';
 import { formatCastForPrompt } from '../cast-utils';
@@ -59,9 +62,10 @@ export async function getAgentResponse(
   let otherRepliesContent = '';
   let castAuthorBuilderProfile: string | null = null;
   let authorGrants: GrantWithParent[] | null = null;
+  let cast: CastWithParentAndReplies | null = null;
   if (data.replyToCastId) {
     log('Fetching reply cast content', job);
-    const cast = await getCastsForAgent(data.replyToCastId);
+    cast = await getCastsForAgent(data.replyToCastId);
 
     if (!cast || !cast.fid) {
       throw new Error(`Reply cast not found: ${data.replyToCastId}`);
@@ -152,6 +156,10 @@ export async function getAgentResponse(
     [anthropicModel, openAIModel, googleAiStudioModel]
   );
 
+  if (!cast) {
+    throw new Error('Cast not found');
+  }
+
   log('Agent analysis result', job);
   log(JSON.stringify(object, null, 2), job);
   const result: FarcasterAgentAnalysis = {
@@ -162,6 +170,8 @@ export async function getAgentResponse(
     agentFid: data.agentFid,
     replyToCastId: data.replyToCastId || null,
     customInstructions: data.customInstructions,
+    replyToHash: cast.hash ? `0x${cast.hash.toString('hex')}` : null,
+    replyToFid: cast.fid || null,
   };
 
   // Cache the analysis

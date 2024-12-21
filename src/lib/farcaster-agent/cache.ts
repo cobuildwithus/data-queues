@@ -8,6 +8,8 @@ export interface FarcasterAgentAnalysis {
   reason: string;
   confidenceScore: number;
   replyToCastId: number | null;
+  replyToHash: string | null;
+  replyToFid: number | null;
   agentFid: number;
   customInstructions: string;
 }

@@ -55,6 +55,7 @@
     "@langchain/anthropic": "^0.3.8",
     "@langchain/core": "^0.3.19",
     "@langchain/openai": "^0.3.14",
+    "@neynar/nodejs-sdk": "^2.5.0",
     "@tensorflow-models/face-detection": "^1.0.3",
     "@tensorflow/tfjs": "^4.22.0",
     "@wagmi/cli": "^2.1.18",
