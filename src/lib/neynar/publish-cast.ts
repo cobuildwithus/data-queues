@@ -15,7 +15,8 @@ export async function publishFarcasterCast(
     } = analysis;
     const response = await neynarClient.publishCast({
       signerUuid,
-      text,
+      // cooler to have lower case text
+      text: text.toLowerCase(),
       parent: replyToHash ?? undefined,
       parentAuthorFid: replyToFid ?? undefined,
       idem: uniqueIdem(agentFid, replyToCastId),
