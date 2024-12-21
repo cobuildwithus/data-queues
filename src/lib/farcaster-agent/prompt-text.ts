@@ -1,3 +1,4 @@
+import { GrantWithParent } from '../../database/queries/grants/get-grant-by-addresses';
 import { FarcasterProfile } from '../../database/farcaster-schema';
 import { aboutPrompt } from '../flows-info';
 import { gonzoPersonalityPrompt } from '../personalities';
@@ -10,7 +11,8 @@ export function getTextFromAgentData(
   mainCastContent: string,
   rootCastContent: string,
   otherRepliesContent: string,
-  castAuthorBuilderProfile: string | null
+  castAuthorBuilderProfile: string | null,
+  authorGrants: GrantWithParent[] | null
 ): string {
   const prompt = `
   You are a Farcaster agent named ${agentFarcasterProfile.fname} that will analyze the provided context and generate an 
@@ -46,6 +48,8 @@ ${mainCastContent ? `Reply to: ${mainCastContent}` : ''}
 ${castAuthorBuilderProfile ? `Cast author details: ${castAuthorBuilderProfile}` : ''}
 ${rootCastContent ? `Root cast: ${rootCastContent}` : ''}
 ${otherRepliesContent ? `Other replies: ${otherRepliesContent}` : ''}
+The author is a recipient of the following Flows grants:
+${authorGrants ? `Author grants: ${authorGrants.map((grant) => `${grant.title} - ${grant.description} (salary: ${grant.monthlyIncomingFlowRate})`).join(' | ')}` : ''}
 </interaction_context>
 
 Please analyze the context and generate an appropriate response. Follow these guidelines:

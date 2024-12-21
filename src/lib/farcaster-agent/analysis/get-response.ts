@@ -22,6 +22,7 @@ import { getCastsForAgent } from '../../../database/queries/casts/casts-for-agen
 import { getBuilderProfile } from '../../../database/queries/profiles/get-builder-profile';
 import { getTextFromAgentData } from '../prompt-text';
 import { formatCastForPrompt } from '../cast-utils';
+import { GrantWithParent } from '../../../database/queries/grants/get-grant-by-addresses';
 
 export async function getAgentResponse(
   redisClient: RedisClientType,
@@ -57,6 +58,7 @@ export async function getAgentResponse(
   let rootCastContent = '';
   let otherRepliesContent = '';
   let castAuthorBuilderProfile: string | null = null;
+  let authorGrants: GrantWithParent[] | null = null;
   if (data.replyToCastId) {
     log('Fetching reply cast content', job);
     const cast = await getCastsForAgent(data.replyToCastId);
@@ -73,6 +75,8 @@ export async function getAgentResponse(
     if (castAuthor) {
       castAuthorBuilderProfile = castAuthor.content;
     }
+
+    authorGrants = cast.authorGrants;
 
     console.log({ castContent });
 
@@ -97,7 +101,8 @@ export async function getAgentResponse(
               mainCastContent,
               rootCastContent,
               otherRepliesContent,
-              castAuthorBuilderProfile
+              castAuthorBuilderProfile,
+              authorGrants
             ),
           },
           {

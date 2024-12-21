@@ -3,6 +3,10 @@ import { farcasterCasts, farcasterProfiles } from '../../farcaster-schema';
 import { farcasterDb } from '../../farcasterDb';
 import { alias } from 'drizzle-orm/pg-core';
 import { getFarcasterProfilesByFids } from '../profiles/get-profile';
+import {
+  getGrantsByAddresses,
+  GrantWithParent,
+} from '../grants/get-grant-by-addresses';
 
 interface CastWithParentAndReplies {
   id: number;
@@ -17,6 +21,7 @@ interface CastWithParentAndReplies {
   rootParentHash: string | null;
   mentionsPositionsArray: number[] | null;
   mentionedFids: number[] | null;
+  authorGrants: GrantWithParent[] | null;
   mentionedFnames: string[] | null;
   profile: {
     fid: number;
@@ -28,6 +33,7 @@ interface CastWithParentAndReplies {
     fid: number | null;
     fname: string | null;
     embeds: string | null;
+    authorGrants: GrantWithParent[] | null;
     embedSummaries: string[] | null;
     mentionsPositionsArray: number[] | null;
     mentionedFids: number[] | null;
@@ -38,6 +44,7 @@ interface CastWithParentAndReplies {
     text: string | null;
     fid: number | null;
     fname: string | null;
+    authorGrants: GrantWithParent[] | null;
     embeds: string | null;
     embedSummaries: string[] | null;
     timestamp: Date | null;
@@ -49,6 +56,7 @@ interface CastWithParentAndReplies {
     id: number | null;
     text: string | null;
     fid: number | null;
+    authorGrants: GrantWithParent[] | null;
     fname: string | null;
     embeds: string | null;
     embedSummaries: string[] | null;
@@ -175,6 +183,13 @@ export async function getCastsForAgent(
     ? await getFarcasterProfilesByFids(uniqueMentionedFids)
     : [];
 
+  // Get verified addresses from mentioned profiles to check for grants
+  const verifiedAddresses = mentionedProfiles
+    .flatMap((profile) => profile.verifiedAddresses || [])
+    .filter(Boolean);
+
+  const relevantGrants = await getGrantsByAddresses(verifiedAddresses);
+
   const getFnamesForFids = (fids: number[] | null) => {
     if (!fids) return null;
     return fids.map((fid) => {
@@ -183,25 +198,56 @@ export async function getCastsForAgent(
     });
   };
 
+  // fid to verified address
+  const fidToVerifiedAddress = mentionedProfiles.reduce(
+    (acc, profile) => {
+      if (profile.verifiedAddresses) {
+        acc[profile.fid] = profile.verifiedAddresses;
+      }
+      return acc;
+    },
+    {} as Record<number, string[]>
+  );
+
   return {
     ...mainCast,
+    authorGrants: relevantGrants.filter(
+      (grant) =>
+        grant.recipient === fidToVerifiedAddress[mainCast.fid ?? 0]?.[0]
+    ),
     mentionedFnames: getFnamesForFids(mainCast.mentionedFids),
-    parentCast: mainCast.parentCast.id
-      ? {
-          ...mainCast.parentCast,
-          mentionedFnames: getFnamesForFids(mainCast.parentCast.mentionedFids),
-        }
-      : null,
+    parentCast:
+      mainCast.parentCast.id && mainCast.parentCast.fid !== null
+        ? {
+            ...mainCast.parentCast,
+            mentionedFnames: getFnamesForFids(
+              mainCast.parentCast.mentionedFids
+            ),
+            authorGrants: relevantGrants.filter(
+              (grant) =>
+                grant.recipient ===
+                fidToVerifiedAddress[mainCast.parentCast.fid ?? 0]?.[0]
+            ),
+          }
+        : null,
     rootCast:
       mainCast.rootCast.id && mainCast.rootCast.id !== mainCast.id
         ? {
             ...mainCast.rootCast,
             mentionedFnames: getFnamesForFids(mainCast.rootCast.mentionedFids),
+            authorGrants: relevantGrants.filter(
+              (grant) =>
+                grant.recipient ===
+                fidToVerifiedAddress[mainCast.rootCast.fid ?? 0]?.[0]
+            ),
           }
         : null,
     otherReplies: otherReplies.map((reply) => ({
       ...reply,
       mentionedFnames: getFnamesForFids(reply.mentionedFids),
+      authorGrants: relevantGrants.filter(
+        (grant) => grant.recipient === fidToVerifiedAddress[reply.fid ?? 0]?.[0]
+      ),
     })),
   };
 }
