@@ -242,13 +242,16 @@ export async function getCastsForAgent(
             ),
           }
         : null,
-    otherReplies: otherReplies.map((reply) => ({
-      ...reply,
-      mentionedFnames: getFnamesForFids(reply.mentionedFids),
-      authorGrants: relevantGrants.filter(
-        (grant) => grant.recipient === fidToVerifiedAddress[reply.fid ?? 0]?.[0]
-      ),
-    })),
+    otherReplies: otherReplies
+      .filter((reply) => reply.id !== mainCast.rootCast.id)
+      .map((reply) => ({
+        ...reply,
+        mentionedFnames: getFnamesForFids(reply.mentionedFids),
+        authorGrants: relevantGrants.filter(
+          (grant) =>
+            grant.recipient === fidToVerifiedAddress[reply.fid ?? 0]?.[0]
+        ),
+      })),
   };
 }
 
