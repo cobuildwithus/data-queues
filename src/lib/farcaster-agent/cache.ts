@@ -16,23 +16,23 @@ export interface FarcasterAgentAnalysis {
 
 export async function getCachedAgentAnalysis(
   redisClient: RedisClientType,
-  castHash: Buffer
+  cacheKey: string
 ): Promise<FarcasterAgentAnalysis | null> {
   return await getCachedResult<FarcasterAgentAnalysis>(
     redisClient,
-    `${castHash.toString('hex')}`,
+    cacheKey,
     FARCASER_AGENT_ANALYSIS_CACHE_PREFIX
   );
 }
 
 export async function cacheAgentAnalysis(
   redisClient: RedisClientType,
-  castHash: Buffer,
+  cacheKey: string,
   analysis: FarcasterAgentAnalysis
 ): Promise<void> {
   await cacheResult(
     redisClient,
-    `${castHash.toString('hex')}`,
+    cacheKey,
     FARCASER_AGENT_ANALYSIS_CACHE_PREFIX,
     async () => analysis
   );

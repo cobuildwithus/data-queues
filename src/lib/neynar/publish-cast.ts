@@ -1,22 +1,24 @@
+import { FarcasterAgentAnalysis } from '../farcaster-agent/cache';
 import neynarClient from './client';
 
 export async function publishFarcasterCast(
   signerUuid: string,
-  text: string,
-  parentHash: string | null,
-  parentAuthorFid: number | null
+  agentFid: number,
+  analysis: FarcasterAgentAnalysis
 ) {
   try {
+    const {
+      proposedReply: text,
+      replyToCastId,
+      replyToHash,
+      replyToFid,
+    } = analysis;
     const response = await neynarClient.publishCast({
       signerUuid,
       text,
-      parent: parentHash ?? undefined,
-      parentAuthorFid: parentAuthorFid ?? undefined,
-      idem: uniqueIdem(
-        text,
-        parentHash ?? undefined,
-        parentAuthorFid ?? undefined
-      ),
+      parent: replyToHash ?? undefined,
+      parentAuthorFid: replyToFid ?? undefined,
+      idem: uniqueIdem(agentFid, replyToCastId),
     });
 
     console.log('Cast published:', response.cast);
@@ -27,6 +29,6 @@ export async function publishFarcasterCast(
   }
 }
 
-function uniqueIdem(text: string, parent?: string, parentAuthorFid?: number) {
-  return `${Date.now()}-${Math.random()}-${text}-${parent}-${parentAuthorFid}`;
+export function uniqueIdem(agentFid: number, replyToCastId: number | null) {
+  return `${agentFid}-${replyToCastId}`;
 }
