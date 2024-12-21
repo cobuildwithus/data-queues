@@ -8,7 +8,7 @@ import {
   GrantWithParent,
 } from '../grants/get-grant-by-addresses';
 
-interface CastWithParentAndReplies {
+export interface CastWithParentAndReplies {
   id: number;
   createdAt: Date | null;
   timestamp: Date | null;
