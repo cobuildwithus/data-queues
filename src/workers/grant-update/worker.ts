@@ -1,5 +1,9 @@
 import { Worker, Job, RedisOptions, ClusterOptions, Queue } from 'bullmq';
-import { IsGrantUpdateJobBody, StoryJobBody } from '../../types/job';
+import {
+  FarcasterAgentJobBody,
+  IsGrantUpdateJobBody,
+  StoryJobBody,
+} from '../../types/job';
 import { log } from '../../lib/helpers';
 import { analyzeCast } from '../../lib/casts/analysis/analyze';
 import { RedisClientType } from 'redis';
@@ -9,12 +13,15 @@ import { eq, sql } from 'drizzle-orm';
 import { flowsDb } from '../../database/flowsDb';
 import { derivedData } from '../../database/flows-schema';
 import { getCastHash } from '../../lib/casts/utils';
+import { DR_GONZO_FID } from '../../lib/config';
+import { requestMoreInfoFromBuilder } from './request-info';
 
 export const isGrantUpdateWorker = async (
   queueName: string,
   connection: RedisOptions | ClusterOptions,
   redisClient: RedisClientType,
-  storyAgentQueue: Queue<StoryJobBody[]>
+  storyAgentQueue: Queue<StoryJobBody[]>,
+  farcasterAgentQueue: Queue<FarcasterAgentJobBody>
 ) => {
   new Worker<IsGrantUpdateJobBody[]>(
     queueName,
@@ -31,6 +38,10 @@ export const isGrantUpdateWorker = async (
         for (let i = 0; i < casts.length; i++) {
           const jobData = casts[i];
           const result = await analyzeCast(redisClient, jobData, job);
+
+          if (result.shouldRequestMoreInfo) {
+            await requestMoreInfoFromBuilder(result, farcasterAgentQueue);
+          }
 
           const grantId = result.grantId;
 
@@ -107,7 +118,7 @@ export const isGrantUpdateWorker = async (
         return {
           jobId: job.id,
           results,
-          // storyQueueJobId: storyQueueJob?.id || '',
+          storyQueueJobId: storyQueueJob?.id || '',
         };
       } catch (error) {
         console.error('Error processing casts:', error);

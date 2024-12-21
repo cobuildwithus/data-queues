@@ -15,6 +15,7 @@ import { getCastHash } from '../utils';
 import { getGrantsByAddresses } from '../../../database/queries/grants/get-grant-by-addresses';
 import { getFarcasterProfile } from '../../../database/queries/profiles/get-profile';
 import { getTextFromCastContent } from './prompt-text';
+import { getCast } from '../../../database/queries/casts/get-cast';
 
 const PROMPT_VERSION = '1.1';
 
@@ -59,9 +60,10 @@ export async function analyzeCast(
     return cachedAnalysis;
   }
 
-  const [summaries, builderProfile] = await Promise.all([
+  const [summaries, builderProfile, cast] = await Promise.all([
     saveUrlSummariesForCastHash(castHash, data.urls, redisClient, job),
     getBuilderProfile(parseInt(data.builderFid)),
+    getCast(castHash),
   ]);
 
   log('Working on detailed cast analysis', job);
@@ -114,6 +116,11 @@ export async function analyzeCast(
         model,
         schema: z.object({
           isGrantUpdate: z.boolean(),
+          shouldRequestMoreInfo: z
+            .boolean()
+            .describe(
+              'If the update could be a grant update if more info is shared, return true'
+            ),
           reason: z
             .string()
             .describe("Reason for why it's a grant update, or not"),
@@ -152,6 +159,7 @@ export async function analyzeCast(
   const result = {
     ...object,
     castHash: data.castHash,
+    cast: cast,
   };
 
   // verify that the grantId is correct if present

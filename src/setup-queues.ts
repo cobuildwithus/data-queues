@@ -36,7 +36,11 @@ export const setupQueues = async () => {
   await setupDeletionQueueProcessor(deletionQueue.name);
   await setupBulkQueueProcessor(bulkEmbeddingsQueue.name);
   await setupFarcasterAgentQueueProcessor(farcasterAgentQueue.name);
-  await setupIsGrantUpdateQueueProcessor(isGrantUpdateQueue.name, storyQueue);
+  await setupIsGrantUpdateQueueProcessor(
+    isGrantUpdateQueue.name,
+    storyQueue,
+    farcasterAgentQueue
+  );
   await setupBuilderProfileQueueProcessor(
     builderProfileQueue.name,
     bulkEmbeddingsQueue

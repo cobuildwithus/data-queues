@@ -73,7 +73,8 @@ export const setupDeletionQueueProcessor = async (queueName: string) => {
 
 export const setupIsGrantUpdateQueueProcessor = async (
   queueName: string,
-  storyAgentQueue: Queue<StoryJobBody[]>
+  storyAgentQueue: Queue<StoryJobBody[]>,
+  farcasterAgentQueue: Queue<FarcasterAgentJobBody>
 ) => {
   await ensureRedisConnected();
 
@@ -81,7 +82,8 @@ export const setupIsGrantUpdateQueueProcessor = async (
     queueName,
     connection,
     redisClient as RedisClientType,
-    storyAgentQueue
+    storyAgentQueue,
+    farcasterAgentQueue
   );
 };
 

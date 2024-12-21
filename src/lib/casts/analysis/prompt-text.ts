@@ -64,6 +64,9 @@ export function getTextFromCastContent(
   8. Be absolutely sure that the work or impact being shared is not just re-posted work of others.
   9. If the cast quotes a post from another user, pay attention to the context of the quote and what the user is saying in the quoted post, especially if they tag the grant recipient in the quoted post.
   10. If the grant is an update, do not under any circumstances shorten the grantId in the output. This output will be used to update the database, and we need the full grantId.
+  11. If the cast could be a complete grant update if more info is shared, return true for shouldRequestMoreInfo.
+  12. If the cast is unrelated to any grant though, return false for shouldRequestMoreInfo.
+  13. Only return true for shouldRequestMoreInfo if isGrantUpdate is false.
   
   Wrap your analysis in <detailed_analysis> tags. After your analysis, provide your determination:
   
@@ -71,6 +74,7 @@ export function getTextFromCastContent(
   grantId: [grantId if it's a grant update, empty string if not]. Be absolutely sure that the grantId is correct.
   confidence_score: [your confidence score if it's a grant update, on a scale of 0-100]
   explanation: [brief explanation of your decision]
+  shouldRequestMoreInfo: [true if we should request more info from the builder to make this a complete grant update, false otherwise.]
   </determination>
   
   Important considerations:

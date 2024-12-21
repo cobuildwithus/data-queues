@@ -1,5 +1,6 @@
 import { RedisClientType } from 'redis';
 import { cacheResult, getCachedResult } from '../cache/cacheResult';
+import { Cast } from '../../database/queries/casts/get-cast';
 
 const CAST_ANALYSIS_CACHE_PREFIX = 'ai-cast-analysis-v3:';
 
@@ -9,6 +10,8 @@ export interface CastAnalysis {
   reason: string;
   confidenceScore: number;
   castHash: string;
+  shouldRequestMoreInfo: boolean;
+  cast: Cast;
 }
 
 export async function getCachedCastAnalysis(
