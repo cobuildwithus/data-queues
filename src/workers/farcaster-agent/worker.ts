@@ -25,12 +25,7 @@ export const farcasterAgentWorker = async (
         const response = await getAgentResponse(redisClient, jobData, job);
         console.log({ response });
 
-        await publishFarcasterCast(
-          signerUuid,
-          response.proposedReply,
-          response.replyToHash,
-          response.replyToFid
-        );
+        await publishFarcasterCast(signerUuid, jobData.agentFid, response);
       } catch (error) {
         console.error('Error processing agent request:', error);
         throw error;

@@ -6,7 +6,6 @@ import { RedisClientType } from 'redis';
 import { Job } from 'bullmq';
 import {
   anthropicModel,
-  openAIModelO1,
   openAIModelO1Mini,
   retryAiCallWithBackoff,
 } from '../../ai';
@@ -17,7 +16,6 @@ import {
   getCachedAgentAnalysis,
 } from '../cache';
 import { getFarcasterProfile } from '../../../database/queries/profiles/get-profile';
-import { createHash } from 'crypto';
 import {
   CastWithParentAndReplies,
   getCastsForAgent,
@@ -26,6 +24,7 @@ import { getBuilderProfile } from '../../../database/queries/profiles/get-builde
 import { getTextFromAgentData } from '../prompt-text';
 import { formatCastForPrompt } from '../cast-utils';
 import { GrantWithParent } from '../../../database/queries/grants/get-grant-by-addresses';
+import { uniqueIdem } from '../../neynar/publish-cast';
 
 export async function getAgentResponse(
   redisClient: RedisClientType,
@@ -37,7 +36,7 @@ export async function getAgentResponse(
   }
 
   // Create hash of entire job data to use as cache key
-  const jobHash = createHash('sha256').update(JSON.stringify(data)).digest();
+  const jobHash = uniqueIdem(data.agentFid, data.replyToCastId);
 
   // Check cache first
   const cachedAnalysis = await getCachedAgentAnalysis(redisClient, jobHash);
