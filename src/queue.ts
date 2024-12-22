@@ -103,7 +103,8 @@ export const setupBuilderProfileQueueProcessor = async (
 
 export const setupStoryQueueProcessor = async (
   queueName: string,
-  bulkEmbeddingsQueue: Queue<JobBody[]>
+  bulkEmbeddingsQueue: Queue<JobBody[]>,
+  farcasterAgentQueue: Queue<FarcasterAgentJobBody>
 ) => {
   await ensureRedisConnected();
 
@@ -111,7 +112,8 @@ export const setupStoryQueueProcessor = async (
     queueName,
     connection,
     redisClient as RedisClientType,
-    bulkEmbeddingsQueue
+    bulkEmbeddingsQueue,
+    farcasterAgentQueue
   );
 };
 

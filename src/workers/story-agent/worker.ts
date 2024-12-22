@@ -1,5 +1,5 @@
 import { Worker, Job, RedisOptions, ClusterOptions, Queue } from 'bullmq';
-import { JobBody, StoryJobBody } from '../../types/job';
+import { FarcasterAgentJobBody, JobBody, StoryJobBody } from '../../types/job';
 import { log } from '../../lib/helpers';
 import { RedisClientType } from 'redis';
 import { buildStories } from '../../lib/stories/build-story/build-story';
@@ -19,19 +19,23 @@ import {
   filterRelevantCasts,
   prepareStoryForInsertion,
   createEmbeddingJob,
+  createAgentJob,
 } from './worker-helpers';
+import { processQueueJobs } from './process-jobs';
 
 export const storyAgentWorker = async (
   queueName: string,
   connection: RedisOptions | ClusterOptions,
   redisClient: RedisClientType,
-  bulkEmbeddingsQueue: Queue<JobBody[]>
+  bulkEmbeddingsQueue: Queue<JobBody[]>,
+  farcasterAgentQueue: Queue<FarcasterAgentJobBody>
 ) => {
   new Worker<StoryJobBody[]>(
     queueName,
     async (job: Job<StoryJobBody[]>) => {
       const storiesJobData = job.data;
       const embeddingJobs: JobBody[] = [];
+      const agentJobs: FarcasterAgentJobBody[] = [];
 
       if (!storiesJobData || !storiesJobData.length) {
         throw new Error('Story data is required');
@@ -183,6 +187,11 @@ export const storyAgentWorker = async (
             );
 
             embeddingJobs.push(...analysis.map(createEmbeddingJob));
+            agentJobs.push(
+              ...analysis
+                .map((analysis) => createAgentJob(analysis, story.newCastId))
+                .filter((job): job is FarcasterAgentJobBody => job !== null)
+            );
 
             log(`Added story analysis to embedding queue`, job);
 
@@ -199,19 +208,16 @@ export const storyAgentWorker = async (
           }
         }
 
-        const queueJobName = `embed-story-${Date.now()}`;
-        const queueJob = await bulkEmbeddingsQueue.add(
-          queueJobName,
-          embeddingJobs
-        );
-
-        log(`Added ${embeddingJobs.length} embedding jobs to queue`, job);
-
-        return {
-          jobId: job.id,
+        const result = await processQueueJobs({
+          job,
+          embeddingJobs,
+          agentJobs,
+          bulkEmbeddingsQueue,
+          farcasterAgentQueue,
           results,
-          queueJobId: queueJob.id,
-        };
+        });
+
+        return result;
       } catch (error) {
         console.error('Error processing stories:', error);
         throw error;

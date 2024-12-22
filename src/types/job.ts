@@ -48,4 +48,5 @@ export interface FarcasterAgentJobBody {
   customInstructions: string;
   replyToCastId: number | null;
   postToChannelId: string | null;
+  urlsToInclude: string[];
 }

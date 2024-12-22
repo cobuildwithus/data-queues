@@ -1,11 +1,12 @@
 import { RedisClientType } from 'redis';
-import { JobBody } from '../../types/job';
+import { FarcasterAgentJobBody, JobBody } from '../../types/job';
 import { StoryAnalysis } from '../../lib/stories/build-story/types';
 import { InferInsertModel } from 'drizzle-orm';
 import { stories } from '../../database/flows-schema';
 import { cleanTextForEmbedding } from '../../lib/embedding/utils';
 import { CastForStory } from '../../database/queries/casts/casts-for-story';
 import { GrantStories } from '../../database/queries/stories/get-grant-stories';
+import { DR_GONZO_FID } from '../../lib/config';
 
 const STORY_LOCK_PREFIX = 'story-locked-v1:';
 const LOCK_TTL = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
@@ -102,5 +103,29 @@ export function createEmbeddingJob(storyAnalysis: StoryAnalysis): JobBody {
     externalUrl: `https://flows.wtf/story/${storyAnalysis.id}`,
     tags: [],
     urls: storyAnalysis.mediaUrls,
+  };
+}
+
+export function createAgentJob(
+  storyAnalysis: StoryAnalysis,
+  replyToCastId: number
+): FarcasterAgentJobBody | null {
+  if (storyAnalysis.complete) return null;
+
+  return {
+    agentFid: DR_GONZO_FID,
+    customInstructions: `
+    You are working on a story about Flows grant work, but need more details to make it complete.
+
+    Based on the story and analysis:
+    ${JSON.stringify(storyAnalysis, null, 2)}
+
+    ${storyAnalysis.headerImage ? '' : 'The story is missing a header image. Please ask the builder you are replying to for an image to use as the story cover photo.'}
+    
+    When replying to the builder, ask for the missing information that would make the story complete.
+    `,
+    replyToCastId,
+    postToChannelId: null,
+    urlsToInclude: storyAnalysis.mediaUrls,
   };
 }

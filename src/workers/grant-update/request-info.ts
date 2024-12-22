@@ -18,5 +18,6 @@ export async function requestMoreInfoFromBuilder(
     You can inform the builder that you are working on a story about their impact.`,
     replyToCastId: result.cast.id,
     postToChannelId: null,
+    urlsToInclude: [],
   });
 }

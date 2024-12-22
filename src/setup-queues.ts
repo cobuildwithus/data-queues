@@ -45,7 +45,11 @@ export const setupQueues = async () => {
     builderProfileQueue.name,
     bulkEmbeddingsQueue
   );
-  await setupStoryQueueProcessor(storyQueue.name, bulkEmbeddingsQueue);
+  await setupStoryQueueProcessor(
+    storyQueue.name,
+    bulkEmbeddingsQueue,
+    farcasterAgentQueue
+  );
 
   return {
     embeddingsQueue,
