@@ -126,6 +126,6 @@ export function createAgentJob(
     `,
     replyToCastId,
     postToChannelId: null,
-    urlsToInclude: storyAnalysis.mediaUrls,
+    urlsToInclude: [`https://flows.wtf/story/${storyAnalysis.id}`],
   };
 }
