@@ -1,10 +1,12 @@
+import { FarcasterAgentJobBody } from '../../types/job';
 import { FarcasterAgentAnalysis } from '../farcaster-agent/cache';
 import neynarClient from './client';
 
 export async function publishFarcasterCast(
   signerUuid: string,
   agentFid: number,
-  analysis: FarcasterAgentAnalysis
+  analysis: FarcasterAgentAnalysis,
+  jobData: FarcasterAgentJobBody
 ) {
   try {
     const {
@@ -20,6 +22,7 @@ export async function publishFarcasterCast(
       parent: replyToHash ?? undefined,
       parentAuthorFid: replyToFid ?? undefined,
       idem: uniqueIdem(agentFid, replyToCastId),
+      embeds: jobData.urlsToInclude.map((url) => ({ url })),
     });
 
     console.log('Cast published:', response.cast);
