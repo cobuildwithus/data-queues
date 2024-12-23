@@ -65,7 +65,7 @@ export const storyAgentWorker = async (
             // relevant stories are those that have < 5 castHashes attached
             // do this so stories don't get too big or long
             const relevantStories = allStories.filter(
-              (story) => (story.castHashes?.length || 0) < 5
+              (story) => (story.sources?.length || 0) < 5
             );
 
             log(
