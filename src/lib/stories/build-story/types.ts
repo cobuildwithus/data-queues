@@ -24,5 +24,4 @@ export interface StoryAnalysis {
   }[];
   infoNeededToComplete?: string;
   mintUrls?: string[];
-  createdAt: string;
 }

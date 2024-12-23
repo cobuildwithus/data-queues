@@ -43,7 +43,6 @@ async function buildStory(
     newStories,
     job,
     redisClient,
-    casts,
     builderAddresses
   );
 

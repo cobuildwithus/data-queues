@@ -15,7 +15,6 @@ export async function populateGeneratedStories(
   stories: LimitedStory[],
   job: Job,
   redisClient: RedisClientType,
-  casts: CastForStory[],
   builderAddresses: string[]
 ): Promise<StoryAnalysis[]> {
   const mediaUrls = await Promise.all(
@@ -29,7 +28,6 @@ export async function populateGeneratedStories(
   );
 
   return stories.map((story, index) => {
-    const earliestTimestamp = getEarliestTimestamp(story.castHashes, casts);
     const participants = Array.from(
       new Set([...story.participants, ...builderAddresses])
     );
@@ -51,7 +49,6 @@ export async function populateGeneratedStories(
       infoNeededToComplete: headerImages[index]
         ? story.infoNeededToComplete
         : story.infoNeededToComplete || 'No header image available',
-      createdAt: earliestTimestamp.toISOString(),
     };
   });
 }
