@@ -177,6 +177,10 @@ export const farcasterAgentSchema = {
             customInstructions: { type: 'string' },
             replyToCastId: { type: ['number', 'null'] },
             postToChannelId: { type: ['string', 'null'] },
+            urlsToInclude: {
+              type: 'array',
+              items: { type: 'string' },
+            },
           },
         },
         minItems: 1,

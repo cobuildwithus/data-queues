@@ -22,7 +22,7 @@ export async function publishFarcasterCast(
       parent: replyToHash ?? undefined,
       parentAuthorFid: replyToFid ?? undefined,
       idem: uniqueIdem(agentFid, replyToCastId),
-      embeds: jobData.urlsToInclude.map((url) => ({ url })),
+      embeds: (jobData.urlsToInclude || []).map((url) => ({ url })),
     });
 
     console.log('Cast published:', response.cast);
