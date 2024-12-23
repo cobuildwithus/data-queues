@@ -51,7 +51,7 @@ export async function initFaceDetector(job: Job) {
 export async function analyzeFrame(framePath: string, detector: any, job: Job) {
   let tensor: tf.Tensor3D | null = null;
   try {
-    log(`Analyzing frame: ${framePath}`, job);
+    // log(`Analyzing frame: ${framePath}`, job);
 
     const image = await sharp(framePath);
     const metadata = await image.metadata();
@@ -73,7 +73,7 @@ export async function analyzeFrame(framePath: string, detector: any, job: Job) {
       try {
         const faces = await detector.estimateFaces(tensor as tf.Tensor3D);
         hasFaces = faces.length > 0;
-        log(`Faces detected: ${faces.length}`, job);
+        // log(`Faces detected: ${faces.length}`, job);
 
         if (hasFaces) {
           // Extract face bounding box
@@ -86,15 +86,15 @@ export async function analyzeFrame(framePath: string, detector: any, job: Job) {
 
     // Analyze motion blur
     const blurLevel = await estimateMotionBlur(imageData, width, height);
-    log(`Estimated Blur Level: ${blurLevel}`, job);
+    // log(`Estimated Blur Level: ${blurLevel}`, job);
 
     // Analyze edge density (visual complexity)
     const edgeDensity = await estimateEdgeDensity(imageData, width, height);
-    log(`Edge Density: ${edgeDensity}`, job);
+    // log(`Edge Density: ${edgeDensity}`, job);
 
     // Analyze rule of thirds compliance
     const ruleOfThirdsScore = evaluateRuleOfThirds(facePosition, width, height);
-    log(`Rule of Thirds Score: ${ruleOfThirdsScore}`, job);
+    // log(`Rule of Thirds Score: ${ruleOfThirdsScore}`, job);
 
     // Analyze image quality
     const stats = await image.stats();
@@ -117,7 +117,7 @@ export async function analyzeFrame(framePath: string, detector: any, job: Job) {
 
     // Estimate noise level
     const noiseLevel = await estimateNoiseLevel(framePath);
-    log(`Estimated Noise Level: ${noiseLevel}`, job);
+    // log(`Estimated Noise Level: ${noiseLevel}`, job);
 
     // Adjusted quality score calculation
     const qualityScore =
@@ -134,7 +134,7 @@ export async function analyzeFrame(framePath: string, detector: any, job: Job) {
       (edgeDensity > 0.5 ? 5 : 0) + // Penalize high edge density (clutter)
       ruleOfThirdsScore * 5; // Bonus for rule of thirds compliance
 
-    log(`Quality Score for frame ${framePath}: ${qualityScore}`, job);
+    // log(`Quality Score for frame ${framePath}: ${qualityScore}`, job);
 
     return {
       path: framePath,

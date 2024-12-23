@@ -126,19 +126,13 @@ export async function extractDiverseThumbnail(
             if (stats) {
               frameStats.push(stats);
               framePaths.push(framePath);
-              log(`Frame analysis successful - score: ${stats.score}`, job);
-            } else {
-              log(
-                `Frame analysis returned no stats for timestamp ${timestamp}s`,
-                job
-              );
             }
             return framePath;
           } catch (error: any) {
-            log(
-              `Failed to process frame ${frameIndex + 1} at ${timestamp}s: ${error.message}`,
-              job
-            );
+            // log(
+            //   `Failed to process frame ${frameIndex + 1} at ${timestamp}s: ${error.message}`,
+            //   job
+            // );
             return null;
           }
         })
